@@ -970,14 +970,14 @@ test.describe("fixture: agent hand-off", () => {
     await form.locator('input[name="write"][value="website"]').check();
     await page.getByTestId("new-task-submit").click();
 
-    // the hand-off: one Copy button leads; install (from source until published), sign in with this
-    // origin and checkout are under "Run the steps yourself"
+    // the hand-off: one Copy button leads; install (from npm), sign in with this origin and checkout
+    // are under "Run the steps yourself"
     const handoff = page.getByTestId("task-handoff");
     await expect(handoff.getByTestId("handoff-copy-prompt")).toBeVisible();
     await handoff.getByText("Run the steps yourself").click();
     await handoff.getByText("See the prompt").click();
-    await expect(handoff.getByTestId("handoff-install-command")).toContainText('pnpm --filter "@commonforge-org/cli..." build');
-    await expect(handoff).toContainText("npm install -g @commonforge-org/cli");
+    await expect(handoff.getByTestId("handoff-install-command")).toHaveText("npm install -g @commonforge-org/cli");
+    await expect(handoff).not.toContainText("isn't on npm yet");
     const origin = new URL(page.url()).origin;
     await expect(handoff.getByTestId("handoff-login-command")).toHaveText(`cforge login --api-url ${origin} --email dev@agency.example`);
     await expect(handoff.getByTestId("task-handoff-command")).toHaveText(/^cforge checkout task-[0-9a-f-]+ show-opening-hours-on-the-contact-page$/);

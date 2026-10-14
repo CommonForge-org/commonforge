@@ -14,12 +14,12 @@ import { formatTime, isDeveloperRole, relativeTime, type Tone } from "./model.js
 // ------------------------------------------------------------------------------ installing cforge
 
 /**
- * How to install cforge, in one place. The package is not on npm yet, so the panel leads with
- * building it from the source; once the owner has published it, set {@link CLI_PUBLISHED} and the
- * panel leads with the npm command instead.
+ * How to install cforge, in one place. The package is on npm, so {@link CLI_PUBLISHED} is set and
+ * the panel leads with the npm command. A self-hosted copy that changes the CLI without publishing
+ * it can clear the flag to lead with building it from the source instead.
  */
 export const CLI_PACKAGE = "@commonforge-org/cli";
-export const CLI_PUBLISHED = false;
+export const CLI_PUBLISHED = true;
 export const CLI_NPM_INSTALL = `npm install -g ${CLI_PACKAGE}`;
 export const CLI_REPO = "https://github.com/CommonForge-org/commonforge.git";
 /** Checked from a fresh clone: the build makes `apps/cli/dist`, and `npm install -g <folder>` links `cforge` onto the PATH. */

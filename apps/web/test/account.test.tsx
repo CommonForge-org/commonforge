@@ -46,7 +46,8 @@ describe("Use CommonForge from your AI app", () => {
     const out = html(createElement(AccountView, { email: "o@x", sessions: [], busy: false, error: null, onEnd: noop, onEndOthers: noop, apiUrl: "https://forge.example.com", cliCode: async () => ({ code: "cfm_abcdefghijklmnopqrstuv" }) }));
     expect(out).toContain("Use CommonForge from your AI app");
     expect(out).toContain('href="https://github.com/CommonForge-org/commonforge/releases/latest/download/commonforge.mcpb"');
-    expect(out).toContain("claude mcp add --scope user commonforge -- cforge mcp");
+    expect(out).toContain("/plugin install commonforge --marketplace CommonForge-org/commonforge");
+    expect(out).toContain("command = &quot;npx&quot;");
     expect(out).toContain("[mcp_servers.commonforge]");
     expect(out).toContain("Get a sign-in code");
     // the code is made on the click, never on page load
@@ -54,10 +55,10 @@ describe("Use CommonForge from your AI app", () => {
   });
 
   it("the setups and the sign-in message", () => {
-    expect(codexConfig()).toBe('[mcp_servers.commonforge]\ncommand = "cforge"\nargs = ["mcp"]');
+    expect(codexConfig()).toBe('[mcp_servers.commonforge]\ncommand = "npx"\nargs = ["-y", "@commonforge-org/cli", "mcp"]');
     expect(signInMessage("https://forge.example.com", "cfm_abcdefghijklmnopqrstuv")).toBe("Sign in to CommonForge: cforge login --api-url https://forge.example.com --code cfm_abcdefghijklmnopqrstuv");
     expect(signInMessage("https://forge.example.com", "not a code")).toBeNull();
     expect(signInMessage("https://x.example.com; rm -rf /", "cfm_abcdefghijklmnopqrstuv")).toBeNull();
-    expect(claudeCodeSetup()).toBe("claude mcp add --scope user commonforge -- cforge mcp");
+    expect(claudeCodeSetup()).toBe("/plugin install commonforge --marketplace CommonForge-org/commonforge");
   });
 });

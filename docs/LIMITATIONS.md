@@ -61,15 +61,17 @@ framework, or secrecy against every possible attack.
     tasks and status work; editing a checked-out task does not. On Windows, checkout needs WSL as
     above.
   - The Claude Code plugin and the Codex entry start the server from npm (`npx -y
-    @commonforge-org/cli mcp`), so they work once the CLI is published; until then the Account
-    page shows `cforge mcp` from a source build. The Desktop extension carries its own copy.
-  - The Account page links the extension to the repository's latest GitHub release; the link works
-    once a release with `commonforge.mcpb` attached exists. A self-hosted copy can attach its own.
+    @commonforge-org/cli mcp`), so they need Node.js 22+ and npm access; the Desktop extension
+    carries its own copy.
+  - The Account page links the extension to the repository's latest GitHub release
+    (`commonforge.mcpb` is attached to v0.1.0). A self-hosted copy can attach its own.
   - Tested: the MCP protocol and every tool against the CLI's fake API, the packed npm bin and the
     unpacked extension over stdio, the extension manifest with `@anthropic-ai/mcpb validate`, the
-    plugin with `claude plugin validate --strict`, and sign-in plus task creation against the
-    local stack. **Not tested:** installing the extension in Claude Desktop, the plugin in Claude
-    Code, or the Codex entry in Codex; and checkout and submit against a real git server. Under
+    plugin with `claude plugin validate --strict`, sign-in plus task creation against the local
+    stack, and installing the plugin from this repository's marketplace with `claude plugin
+    install` (Claude Code 2.1.296), after which `claude mcp list` shows its server, started from
+    npm, as connected. **Not tested:** installing the extension in Claude Desktop, or the Codex
+    entry in Codex; and checkout and submit against a real git server. Under
     Claude Desktop's own Node runtime, git is told to run the credential helper with
     `ELECTRON_RUN_AS_NODE=1` (macOS and Linux); this is untested in the app.
 - The stale-base policy is **refuse**: there is no automatic rebase. A proposal whose base moved

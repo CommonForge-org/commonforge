@@ -1,8 +1,8 @@
 /**
  * Connecting an AI app to CommonForge through the `cforge mcp` server (apps/cli/src/mcp.ts): the
- * Claude Desktop extension, the Claude Code plugin and the Codex config. Until the CLI is on npm
- * ({@link CLI_PUBLISHED}), Claude Code and Codex run a `cforge` built from the source; the Desktop
- * extension carries its own copy and needs neither.
+ * Claude Desktop extension, the Claude Code plugin and the Codex config. With the CLI on npm
+ * ({@link CLI_PUBLISHED}), Claude Code and Codex start it with `npx`; without it, a `cforge` built
+ * from the source. The Desktop extension carries its own copy and needs neither.
  */
 import { CLI_PACKAGE, CLI_PUBLISHED, isLoginCode, shellWord } from "./handoff.js";
 

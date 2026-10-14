@@ -190,7 +190,8 @@ Cloudflare resources, and the maintainers' scripts for the project's own demo an
 npm install -g @commonforge-org/cli
 ```
 
-The package is not on npm yet. Until it is, build it from the source (Node.js 22+, Git and pnpm):
+It needs Node.js 22+ and Git. To run a CLI you changed yourself, build it from the source instead
+(Node.js 22+, Git and pnpm):
 
 ```sh
 git clone https://github.com/CommonForge-org/commonforge.git
@@ -202,8 +203,9 @@ npm install -g ./apps/cli
 
 Then `cforge login --api-url <your app URL> --email <you>`. *Give to agent* in the app shows the
 rest, filled in for the task, and its **Copy prompt for your agent** lets the agent do all of this
-by itself. (The app's hand-off panel shows the same commands:
-`CLI_SOURCE_INSTALL` in [apps/web/src/lib/handoff.ts](apps/web/src/lib/handoff.ts).)
+by itself. (The app's hand-off panel shows the same commands; a self-hosted copy that changes the
+CLI without publishing it can set `CLI_PUBLISHED` to `false` in
+[apps/web/src/lib/handoff.ts](apps/web/src/lib/handoff.ts) to show the source build instead.)
 
 ### From Claude or Codex (MCP)
 
@@ -216,8 +218,8 @@ sign-in code:
 - **Codex:** a `[mcp_servers.commonforge]` entry in `~/.codex/config.toml` (see
   [apps/cli/README.md](apps/cli/README.md#use-it-from-an-ai-app-mcp)).
 
-The plugin and the Codex entry start the server with `npx @commonforge-org/cli`, so they work once
-the CLI is on npm; until then the Account page shows `cforge mcp` from a source build instead.
+The plugin and the Codex entry start the server with `npx -y @commonforge-org/cli mcp`, so they
+need Node.js 22+ but no separate install.
 
 The tools can do only what the signed-in person can; see [docs/LIMITATIONS.md](docs/LIMITATIONS.md)
 for what is tested.

@@ -66,8 +66,8 @@ describe("hand-off commands", () => {
     expect(renewCommand("task-1")).toBe("cforge task lease task-1");
   });
 
-  it("installs from the source until the package is published, with the npm command kept for later", () => {
-    expect(CLI_PUBLISHED).toBe(false);
+  it("installs from npm now that the package is published, with the source build kept for self-hosted changes", () => {
+    expect(CLI_PUBLISHED).toBe(true);
     expect(CLI_NPM_INSTALL).toBe("npm install -g @commonforge-org/cli");
     expect(CLI_SOURCE_INSTALL.split("\n")).toEqual(["git clone https://github.com/CommonForge-org/commonforge.git", "cd commonforge", "pnpm install", 'pnpm --filter "@commonforge-org/cli..." build', "npm install -g ./apps/cli"]);
   });
@@ -170,7 +170,8 @@ describe("hand-off commands", () => {
     const m = developerMessage({ taskId: "task-1", title: "Show opening hours", request: "", write: ["website"], read: [] }, { apiUrl: "https://app.example", staging: true });
     expect(m).toContain("cforge login --api-url https://app.example --email <your email>");
     expect(m).toContain("cforge checkout task-1 show-opening-hours");
-    expect(m).toContain("not on npm yet");
+    expect(m).toContain("npm install -g @commonforge-org/cli");
+    expect(m).not.toContain("not on npm yet");
     expect(m).toContain("In staging");
   });
 
@@ -217,13 +218,13 @@ describe("the hand-off panel", () => {
     const html = renderToString(createElement(AgentHandoff, { task, ctx: ctx("developer", false), onDone: noop }));
     const s = text(html);
     expect(s).toContain("Give this task to your agent");
-    expect(s).toContain("cforge isn't on npm yet");
-    expect(s).toContain('pnpm --filter "@commonforge-org/cli..." build');
+    expect(s).toContain("npm install -g @commonforge-org/cli");
+    expect(s).not.toContain("isn't on npm yet");
     expect(s).toContain("cforge login --api-url https://app.example --email developer@example.com");
     expect(s).toContain("cforge checkout task-1 show-opening-hours");
     expect(s).toContain("- You may change: website");
     expect(s).toContain("Make proposal");
-    for (const label of ["the build-from-source commands", "the sign-in command", "the checkout command", "the prompt for your agent"]) expect(html).toContain(`Copy ${label}`);
+    for (const label of ["the install command", "the sign-in command", "the checkout command", "the prompt for your agent"]) expect(html).toContain(`Copy ${label}`);
     expect(html).not.toContain('data-testid="handoff-developer"');
     // a developer may lack write access to the task's folders: the Worker says no_write_grant
     expect(s).toContain("If cforge says no_write_grant, ask an owner for access.");
