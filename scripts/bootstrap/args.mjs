@@ -159,7 +159,9 @@ export function pickDomains(recorded, opts) {
 export function domainUrls(n, domains) {
   const workerUrl = domains.appDomain ? `https://${domains.appDomain}` : n.workerUrl;
   const previewUrl = domains.previewDomain ? `https://${domains.previewDomain}` : n.previewUrl;
-  if (new URL(workerUrl).origin === new URL(previewUrl).origin) throw new Error(`the app and preview URLs share an origin (${workerUrl})`);
+  // before the probe, the workers.dev host is the placeholder `<subdomain>.workers.dev`, which URL rejects
+  const origin = (u) => { try { return new URL(u).origin; } catch { return u; } };
+  if (origin(workerUrl) === origin(previewUrl)) throw new Error(`the app and preview URLs share an origin (${workerUrl})`);
   return { workerUrl, previewUrl };
 }
 

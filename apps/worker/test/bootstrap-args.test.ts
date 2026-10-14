@@ -181,6 +181,9 @@ describe("bootstrap custom domains (--app-domain / --preview-domain)", () => {
 
   it("refuses one origin for the app and previews", () => {
     expect(() => domainUrls({ workerUrl: "https://a.example.org", previewUrl: "https://b.example.org" }, { previewDomain: "a.example.org" })).toThrow(/share an origin/);
+    // `bootstrap.sh` checks the name before the probe knows the workers.dev host (a fresh clone failed with "Invalid URL")
+    const pre = deploymentNames("acme", { base: "<subdomain>.workers.dev", d1Id: "" });
+    expect(domainUrls(pre, {})).toEqual({ workerUrl: "https://acme-worker.<subdomain>.workers.dev", previewUrl: "https://acme-preview.<subdomain>.workers.dev" });
   });
 
   it("review L5: a test deployment may not route production's custom domain or workers.dev host", () => {
