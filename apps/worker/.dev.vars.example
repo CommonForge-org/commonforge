@@ -1,0 +1,144 @@
+# CommonForge local secrets. Copy to apps/worker/.dev.vars (git-ignored) and fill in.
+# `wrangler dev` loads .dev.vars as Worker secrets and var overrides; scripts, the runner and
+# the CLI load the same file via `source scripts/load-dev-vars.sh`.
+# Use a Cloudflare account dedicated to CommonForge, not one that runs your production sites.
+#
+# You do NOT need this file for the local, no-credentials stack (scripts/dev-local.sh): it uses
+# wrangler.e2e.jsonc and e2e/no-secrets.env instead.
+#
+# Every variable the control-plane Worker reads (src/env.ts) is listed below. Required ones are
+# uncommented; optional ones are commented out with their default.
+
+# ---- Cloudflare account (required) ----
+
+# Cloudflare dashboard -> account home -> Account ID (32 hex chars)
+CF_ACCOUNT_ID=REPLACE_WITH_ACCOUNT_ID
+
+# API token created on that account with:
+#   Workers Scripts: Edit, Workers R2 Storage: Edit, Workers KV Storage: Edit,
+#   Queues: Edit, Durable Objects: Edit (via Workers Scripts), Artifacts: Edit,
+#   Account Settings: Read, Workers Tail: Read
+# The Worker uses it for the Artifacts REST API (per-organization namespaces).
+CF_API_TOKEN=REPLACE_WITH_API_TOKEN
+
+# Same values under the names Wrangler reads for `wrangler deploy` in CI/non-interactive use.
+CLOUDFLARE_ACCOUNT_ID=REPLACE_WITH_ACCOUNT_ID
+CLOUDFLARE_API_TOKEN=REPLACE_WITH_API_TOKEN
+
+# Artifacts namespace prefix for this environment (dev | ci | prod). Namespaces become
+# <prefix>-<orgId>-canonical | -tasks | -editions. Also set in wrangler.jsonc vars.
+COMMONFORGE_NAMESPACE_PREFIX=commonforge-dev
+
+# ---- Random secrets (required). Generate each with:  openssl rand -hex 32 ----
+
+# HMAC key for session, magic-link and other server-issued tokens
+COMMONFORGE_SESSION_SECRET=REPLACE_WITH_openssl_rand_hex_32
+# signs the jobs handed to integration runners
+COMMONFORGE_RUNNER_JOB_KEY=REPLACE_WITH_openssl_rand_hex_32
+
+# ---- URLs and sign-in ----
+
+# Public URL of this Worker; it becomes `credentialBroker` inside signed jobs. There is no default:
+# deployed environments set an https URL in wrangler.jsonc vars; for `wrangler dev`:
+COMMONFORGE_PUBLIC_URL=http://localhost:8787
+
+# Who may create organizations: comma-separated emails or @domain entries. Empty: nobody.
+# scripts/deploy-live.sh refuses to deploy the worker without it.
+COMMONFORGE_ADMIN_EMAILS=you@your-agency.example
+
+# Base URL of the web app; magic links point at <APP_URL>/auth/verify?token=... (wrangler.jsonc vars)
+# COMMONFORGE_APP_URL=http://localhost:5173
+
+# Sender address of sign-in emails; must be on a domain set up for Cloudflare Email Service.
+# COMMONFORGE_EMAIL_FROM=login@your-domain.example
+
+# send (Cloudflare Email Service) | log (write the sign-in link to the Worker log instead).
+# log is honored only on a local Worker (COMMONFORGE_PUBLIC_URL on localhost) or a named
+# non-production deployment (below); anywhere else sign-in is refused.
+# COMMONFORGE_EMAIL_MODE=log
+
+# ---- Integration runners (optional) ----
+
+# Bearer that pull-mode runners present to POST /api/runner/jobs/next (unset = pull disabled).
+# The runner reads the same value from its --auth-file.  openssl rand -hex 32
+# COMMONFORGE_RUNNER_TOKEN=REPLACE_WITH_openssl_rand_hex_32
+
+# 1 lets pull-mode runners claim release-deploy jobs (default: never)
+# COMMONFORGE_RUNNER_DEPLOY=1
+
+# ---- Previews and releases (optional) ----
+
+# Base URL of the dedicated preview Worker (another origin than the app). Unset: previews are refused.
+# COMMONFORGE_PREVIEW_URL=https://preview.your-domain.example
+# HMAC key shared with the preview Worker for expiring preview links (at least 32 bytes).  openssl rand -hex 32
+# COMMONFORGE_PREVIEW_KEY=REPLACE_WITH_openssl_rand_hex_32
+
+# Cloudflare API token (Workers Scripts: Edit) handed only to release-deploy jobs.
+# COMMONFORGE_DEPLOY_API_TOKEN=REPLACE_WITH_DEPLOY_API_TOKEN
+# Account the releases deploy to (default: CF_ACCOUNT_ID). Prefer a separate account.
+# COMMONFORGE_DEPLOY_ACCOUNT_ID=REPLACE_WITH_ACCOUNT_ID
+# Release Worker names are <prefix>-<orgId>-<name> (default: cfapp)
+# COMMONFORGE_DEPLOY_WORKER_PREFIX=cfapp
+
+# ---- Folders and uploads: git + LFS on R2 (optional) ----
+
+# Name of the R2 bucket bound as COMMONFORGE_ASSETS (wrangler.jsonc vars)
+# COMMONFORGE_ASSETS_BUCKET=commonforge-assets-dev
+# R2 API token (Object Read & Write on that bucket) that signs upload URLs. Unset: LFS uploads answer 503.
+# COMMONFORGE_R2_ACCESS_KEY_ID=REPLACE_WITH_R2_ACCESS_KEY_ID
+# COMMONFORGE_R2_SECRET_ACCESS_KEY=REPLACE_WITH_R2_SECRET_ACCESS_KEY
+# Files above this many bytes are stored in LFS (default 1048576)
+# COMMONFORGE_LFS_THRESHOLD_BYTES=1048576
+# Unaccepted LFS objects are deleted this many days after their last use (default 7)
+# COMMONFORGE_STAGING_TTL_DAYS=7
+# Browser upload part size in bytes (default 52428800, at least 5242880)
+# COMMONFORGE_UPLOAD_PART_BYTES=52428800
+
+# ---- Risk classifier for staged changes (optional) ----
+# Without a key the provider answers "not configured" and the change goes to developer review.
+
+# TypeSafe API key for the `jev` provider
+# JEV_API_KEY=REPLACE_WITH_JEV_API_KEY
+# OpenAI API key for the `openai-decisions` provider, and its model (default gpt-6-luna)
+# OPENAI_API_KEY=REPLACE_WITH_OPENAI_API_KEY
+# COMMONFORGE_OPENAI_DECISIONS_MODEL=gpt-6-luna
+
+# ---- Deploying with scripts/deploy-live.sh and scripts/deploy-ci.sh (optional) ----
+# Not needed for scripts/bootstrap.sh (it takes options and records its own state) or for local
+# development. The committed wrangler*.jsonc are templates with placeholders; these values are
+# written into git-ignored wrangler.deploy-live*.jsonc / wrangler.deploy-ci*.jsonc at deploy time.
+# Note: `wrangler dev` also reads this file, so COMMONFORGE_EMAIL_FROM set here applies locally too.
+
+# Sign-in sender: an address on a domain onboarded for Cloudflare Email Sending (deploy-live, deploy-ci)
+# COMMONFORGE_EMAIL_FROM=login@your-domain.example
+# The production D1 database's id (`wrangler d1 list`), for deploy-live; deploy-ci needs it too and
+# refuses a COMMONFORGE_CI_D1_DATABASE_ID equal to it
+# COMMONFORGE_D1_DATABASE_ID=REPLACE_WITH_D1_DATABASE_ID
+# The commonforge-ci D1 database's id, for deploy-ci (`scripts/deploy-ci.sh setup` creates it)
+# COMMONFORGE_CI_D1_DATABASE_ID=REPLACE_WITH_CI_D1_DATABASE_ID
+# The account's workers.dev host, for deploy-live, deploy-ci and scripts/ci-live/
+# COMMONFORGE_LIVE_BASE=your-subdomain.workers.dev
+# deploy-live only, all optional. App and preview origins (default: their workers.dev URLs, or the
+# custom domains below); the two must differ. Not COMMONFORGE_APP_URL / COMMONFORGE_PREVIEW_URL,
+# which `wrangler dev` would apply to your local Worker.
+# COMMONFORGE_LIVE_APP_URL=https://forge.your-domain.example
+# COMMONFORGE_LIVE_PREVIEW_URL=https://preview.your-domain.example
+# Custom domains routed to the app and preview Workers (zones on this Cloudflare account)
+# COMMONFORGE_LIVE_APP_DOMAIN=forge.your-domain.example
+# COMMONFORGE_LIVE_PREVIEW_DOMAIN=preview.your-domain.example
+# scripts/ci-live/: comma-separated org ids no harness may clean up or write to. List every org whose
+# data must survive (a demo or recording org, a customer's): empty, nothing is protected beyond the
+# harness's own checks.
+# COMMONFORGE_PROTECTED_ORGS=o-xxxxxxxxxxxx
+
+# ---- Non-production deployments and fault injection (optional; never on production) ----
+
+# A non-production deployment's name (set by scripts/bootstrap.sh and scripts/ci-config.mjs),
+# reported by /health. With COMMONFORGE_QUEUE_SUFFIX=-<name> it allows email log mode there.
+# COMMONFORGE_DEPLOYMENT=
+# Suffix of every queue name of this deployment, e.g. -ci (default: none)
+# COMMONFORGE_QUEUE_SUFFIX=
+# Comma-separated fault points (src/chaos.ts); ignored on deployed Workers unless the next one is set
+# COMMONFORGE_CHAOS=
+# inject-faults lets a deployed rehearsal Worker honor COMMONFORGE_CHAOS
+# COMMONFORGE_CHAOS_ALLOW_DEPLOYED=

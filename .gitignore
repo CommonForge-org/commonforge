@@ -1,0 +1,46 @@
+node_modules/
+dist/
+.wrangler/
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+.env
+.env.*
+!.env.example
+.superpowers/
+.worktrees/
+*.log
+.DS_Store
+fixtures/brand-assets/brand-video.mp4
+.turbo/
+coverage/
+*.tsbuildinfo
+dist-fixture/
+test-results/
+playwright-report/
+
+# Demo video (standalone project; generated media and renders stay local)
+video/node_modules/
+video/out/
+video/public/clips/
+video/public/audio/
+video/.env
+video/seed-output*.json
+video/public/clips-dry/
+video/.capture/
+video/.placeholder-manifest.json
+# capture takes: MANIFEST.json and concurrency.json are small; the media stays local
+evidence/video/*/clips/
+
+# per-deployment wrangler configs generated at deploy time (scripts/bootstrap.sh, live-config.mjs, ci-config.mjs)
+apps/worker/wrangler.deploy-*.jsonc
+
+# credentials, keys and local state that must never be committed
+*.pem
+*.key
+deployment.json
+secrets.env
+session.json
+
+# run outputs of the live harness and demo scripts (commit a run deliberately with `git add -f`)
+evidence/

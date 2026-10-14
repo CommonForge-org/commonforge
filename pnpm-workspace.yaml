@@ -1,0 +1,14 @@
+packages:
+  - packages/*
+  - apps/*
+  - fixtures/*
+
+# Dependencies allowed to run install scripts (native binaries for Wrangler/Vite).
+allowBuilds:
+  esbuild: true
+  workerd: true
+
+# Published less than pnpm's minimum release age at scaffold time (2026-10-05).
+minimumReleaseAgeExclude:
+  - '@cloudflare/workers-types@5.20261006.1'
+  - '@vitejs/plugin-react@6.1.2'

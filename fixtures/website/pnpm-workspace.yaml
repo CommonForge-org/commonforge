@@ -1,0 +1,4 @@
+# Demo fixture: no 24h minimum-release-age gate, so a freshly published pin cannot fail the preview/release installs the runner performs. (pnpm 12 reads this file, not .npmrc.)
+packages:
+  - .
+minimumReleaseAge: 0

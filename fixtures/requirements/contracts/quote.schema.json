@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:commonforge:fixtures:quote-schema",
+  "title": "Customer Portal quote response",
+  "description": "Contract between the website (consumer) and the api (producer) for GET /quote. additionalProperties is false on purpose: a producer that adds a field without updating this contract fails the website contract test.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["quoteId", "customer", "plan", "seats", "currency", "unitPrice", "total", "validUntil", "apiVersion"],
+  "properties": {
+    "quoteId": { "type": "string", "pattern": "^q-[a-z]+-[0-9]+-[0-9a-f]{8}$" },
+    "customer": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "plan": { "type": "string", "enum": ["starter", "team", "enterprise"] },
+    "seats": { "type": "integer", "minimum": 1, "maximum": 10000 },
+    "currency": { "type": "string", "enum": ["USD"] },
+    "unitPrice": { "type": "number", "minimum": 0 },
+    "total": { "type": "number", "minimum": 0 },
+    "validUntil": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+    "apiVersion": { "type": "string", "minLength": 1 }
+  }
+}

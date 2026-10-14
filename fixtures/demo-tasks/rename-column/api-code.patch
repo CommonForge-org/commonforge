@@ -1,0 +1,10 @@
+diff --git a/src/app.ts b/src/app.ts
+--- a/src/app.ts
++++ b/src/app.ts
+@@ -97,5 +97,5 @@
+   app.get("/contacts", async (c) => {
+     const db = c.env?.DB;
+     if (!db) return c.json({ error: "no database" }, 503);
+-    const { results } = await db.prepare("SELECT id, name, email, phone FROM contacts ORDER BY id").bind().all();
++    const { results } = await db.prepare("SELECT id, name, email_address, phone FROM contacts ORDER BY id").bind().all();
+     return c.json({ contacts: results });

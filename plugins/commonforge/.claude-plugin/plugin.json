@@ -1,0 +1,10 @@
+{
+  "name": "commonforge",
+  "version": "0.1.0",
+  "description": "Create, check out and submit CommonForge tasks from Claude Code: the cforge MCP server and a skill for the task routine.",
+  "author": { "name": "CommonForge contributors" },
+  "homepage": "https://github.com/CommonForge-org/commonforge",
+  "repository": "https://github.com/CommonForge-org/commonforge",
+  "license": "MIT",
+  "keywords": ["commonforge", "tasks", "agency", "mcp"]
+}

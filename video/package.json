@@ -1,0 +1,52 @@
+{
+  "name": "@commonforge-org/demo-video",
+  "private": true,
+  "type": "module",
+  "description": "CommonForge demo video: Remotion composition driven by narration.json and media.json",
+  "license": "MIT",
+  "packageManager": "pnpm@10.25.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "remotion studio",
+    "prerender": "tsx scripts/check-no-placeholders.ts",
+    "render": "tsx scripts/check-no-placeholders.ts && remotion render DemoVideo out/commonforge-demo.mp4 --codec h264",
+    "render:preview": "remotion render DemoVideo out/preview.mp4 --codec h264 --scale 0.5",
+    "placeholders": "tsx scripts/make-placeholders.ts",
+    "check:placeholders": "tsx scripts/check-no-placeholders.ts",
+    "check:fit": "tsx scripts/check-fit.ts",
+    "narration:build": "tsx scripts/build-narration-json.ts",
+    "narration:elevenlabs": "tsx scripts/narrate-elevenlabs.ts",
+    "seed": "tsx scripts/seed-demo.ts",
+    "capture": "tsx scripts/capture.ts",
+    "capture:dry": "tsx scripts/capture.ts --dry-run",
+    "capture:terminals": "bash scripts/capture-terminals.sh",
+    "casts": "tsx scripts/log-to-casts.ts",
+    "align-lanes": "tsx scripts/align-lanes.ts",
+    "record-cast": "tsx scripts/record-cast.ts",
+    "evidence": "tsx scripts/evidence-manifest.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.533",
+    "@remotion/google-fonts": "4.0.533",
+    "@remotion/media-utils": "4.0.533",
+    "@remotion/transitions": "4.0.533",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "remotion": "4.0.533",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@aws-sdk/client-s3": "^3.1146.0",
+    "@types/node": "^26.6.4",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "playwright": "^1.63.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3"
+  }
+}

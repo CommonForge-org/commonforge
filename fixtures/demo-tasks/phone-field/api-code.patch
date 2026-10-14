@@ -1,0 +1,62 @@
+diff --git a/src/app.ts b/src/app.ts
+--- a/src/app.ts
++++ b/src/app.ts
+@@ -97,17 +97,18 @@
+   app.get("/contacts", async (c) => {
+     const db = c.env?.DB;
+     if (!db) return c.json({ error: "no database" }, 503);
+-    const { results } = await db.prepare("SELECT id, name, email FROM contacts ORDER BY id").bind().all();
++    const { results } = await db.prepare("SELECT id, name, email, phone FROM contacts ORDER BY id").bind().all();
+     return c.json({ contacts: results });
+   });
+ 
+-  /** POST /contacts {name, email}: add a contact, when a D1 database is bound. */
++  /** POST /contacts {name, email, phone?}: add a contact, when a D1 database is bound. */
+   app.post("/contacts", async (c) => {
+     const db = c.env?.DB;
+     if (!db) return c.json({ error: "no database" }, 503);
+-    const body = (await c.req.json().catch(() => null)) as { name?: unknown; email?: unknown } | null;
++    const body = (await c.req.json().catch(() => null)) as { name?: unknown; email?: unknown; phone?: unknown } | null;
+     if (typeof body?.name !== "string" || typeof body?.email !== "string") return c.json({ error: "name and email are required" }, 400);
+-    await db.prepare("INSERT INTO contacts (name, email) VALUES (?, ?)").bind(body.name, body.email).run();
++    if (body.phone !== undefined && (typeof body.phone !== "string" || body.phone.length > 40)) return c.json({ error: "invalid phone" }, 400);
++    await db.prepare("INSERT INTO contacts (name, email, phone) VALUES (?, ?, ?)").bind(body.name, body.email, body.phone ?? null).run();
+     return c.json({ ok: true }, 201);
+   });
+ 
+diff --git a/tests/api.test.ts b/tests/api.test.ts
+--- a/tests/api.test.ts
++++ b/tests/api.test.ts
+@@ -106,7 +106,7 @@
+ });
+ 
+ function memoryD1() {
+-  const rows: Array<{ id: number; name: string; email: string }> = [];
++  const rows: Array<{ id: number; name: string; email: string; phone: string | null }> = [];
+   return {
+     rows,
+     prepare(sql: string) {
+@@ -116,7 +116,7 @@
+             return { results: sql.startsWith("SELECT") ? [...rows] : [] };
+           },
+           async run() {
+-            if (sql.startsWith("INSERT")) rows.push({ id: rows.length + 1, name: String(args[0]), email: String(args[1]) });
++            if (sql.startsWith("INSERT")) rows.push({ id: rows.length + 1, name: String(args[0]), email: String(args[1]), phone: (args[2] as string | null) ?? null });
+             return { success: true };
+           },
+         }),
+@@ -130,12 +130,12 @@
+     const DB = memoryD1();
+     const add = await app.request(
+       "/contacts",
+-      { method: "POST", body: JSON.stringify({ name: "Ada", email: "ada@example.com" }), headers: { "content-type": "application/json" } },
++      { method: "POST", body: JSON.stringify({ name: "Ada", email: "ada@example.com", phone: "+1 555 0100" }), headers: { "content-type": "application/json" } },
+       { DB },
+     );
+     expect(add.status).toBe(201);
+     const list = await app.request("/contacts", {}, { DB });
+-    expect(await list.json()).toEqual({ contacts: [{ id: 1, name: "Ada", email: "ada@example.com" }] });
++    expect(await list.json()).toEqual({ contacts: [{ id: 1, name: "Ada", email: "ada@example.com", phone: "+1 555 0100" }] });
+     const none = await app.request("/contacts", {}, {});
+     expect(none.status).toBe(503);
+     expect(await none.json()).toEqual({ error: "no database" });

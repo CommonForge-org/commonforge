@@ -1,0 +1,28 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Task 22: the dedicated preview Worker (its own workers.dev origin; never the app's). Serves
+  // /p/<org>/<previewId>/<token>/… from R2 and runs each preview's api bundle in its own container
+  // without internet (src/preview/). Deploy:
+  //   WRANGLER_DOCKER_BIN=<docker or a `sudo -n docker` wrapper> pnpm exec wrangler deploy -c wrangler.preview.jsonc
+  //   pnpm exec wrangler secret put COMMONFORGE_PREVIEW_KEY -c wrangler.preview.jsonc   (same value as the control plane's)
+  "name": "commonforge-preview",
+  "main": "src/preview/index.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  // review m-8: preview tokens are in the URL path, so invocation logs (which record URLs) are off
+  "observability": { "enabled": true, "logs": { "invocation_logs": false } },
+
+  "containers": [
+    {
+      "class_name": "PreviewBox",
+      "scheduling_policy": "durable_object",
+      "images": { "runner": { "dockerfile": "../runner/Dockerfile", "build_context": "../.." } }
+    }
+  ],
+  "durable_objects": { "bindings": [{ "name": "PREVIEW_BOX", "class_name": "PreviewBox" }] },
+  "exports": { "PreviewBox": { "type": "durable-object", "storage": "sqlite" } },
+
+  // read-only use: the preview's site, bundles and meta.json (written by the control plane / runner)
+  "r2_buckets": [{ "binding": "COMMONFORGE_ASSETS", "bucket_name": "commonforge-assets-dev" }]
+}

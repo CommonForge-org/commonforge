@@ -1,0 +1,31 @@
+// LFS spike only (folders-and-uploads phase 1). Throwaway: delete with `wrangler delete`.
+{
+  "name": "commonforge-spike-lfs",
+  "main": "worker.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "observability": { "enabled": true },
+
+  "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "commonforge-spike-lfs" }],
+
+  // Shape proven in spikes/sandbox-runner/wrangler.jsonc.
+  "containers": [
+    {
+      "class_name": "LfsRunner",
+      "scheduling_policy": "durable_object",
+      "images": { "runner": { "dockerfile": "./Dockerfile" } }
+    }
+  ],
+  "durable_objects": {
+    "bindings": [{ "name": "RUNNER", "class_name": "LfsRunner" }]
+  },
+  "exports": {
+    "LfsRunner": { "type": "durable-object", "storage": "sqlite" }
+  },
+
+  "artifacts": [{ "binding": "ARTIFACTS", "namespace": "commonforge-spike-lfs", "remote": true }],
+
+  "vars": { "ACCOUNT_ID": "<CLOUDFLARE_ACCOUNT_ID>", "BUCKET_NAME": "commonforge-spike-lfs" }
+  // Secrets (not committed): R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, SPIKE_TOKEN via `wrangler secret put`.
+}

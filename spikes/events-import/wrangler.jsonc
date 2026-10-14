@@ -1,0 +1,26 @@
+// Task 4 spike only (A6). Deploy and tear down with run.mjs; see RESULTS.md ("Reproduce").
+{
+  "name": "commonforge-spike-events",
+  "main": "worker.ts",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": true,
+  "observability": { "enabled": true },
+
+  "queues": {
+    "consumers": [
+      {
+        "queue": "commonforge-spike-events",
+        // Batch of 1 with no batching wait so the measured latency is the event path, not the
+        // consumer's batching window (the default is up to 10 messages / 5 s).
+        "max_batch_size": 1,
+        "max_batch_timeout": 0,
+        "max_retries": 3
+      }
+    ]
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "RECORDER", "class_name": "EventRecorder" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["EventRecorder"] }]
+  // Secret (not committed): SPIKE_ADMIN_TOKEN via `wrangler secret put` (run.mjs does this).
+}

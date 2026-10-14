@@ -1,0 +1,183 @@
+{
+  "$comment": "Every app selector and on-screen text the capture scripts rely on. Source: docs/plans/capture-briefing.md and apps/web/src. Selector forms: testid | role (+name, exact, level) | label | css | text, optionally narrowed by hasText, within (another key: this scene first, then shared) and first. Strings written /like this/i are regular expressions.",
+  "shared": {
+    "selectors": {
+      "fixtureBanner": { "role": "note", "hasText": "Fixture mode" },
+      "viewAsDeveloper": { "role": "button", "name": "Developer", "exact": true, "within": "fixtureBanner" },
+      "viewAsClient": { "role": "button", "name": "Client", "exact": true, "within": "fixtureBanner" },
+      "activeRole": { "css": ".fixture-banner .seg-active" },
+      "finishRunningAgent": { "role": "button", "name": "Finish running agent", "within": "fixtureBanner" },
+      "projectLink": { "role": "link", "name": "/Customer Portal/" },
+      "projectHeading": { "role": "heading", "level": 1 },
+      "proposalHash": { "testid": "proposal-hash" },
+      "runValidation": { "role": "button", "name": "/^(Run validation|Validate again)$/" },
+      "stepApprove": { "testid": "step-approve" },
+      "approve": { "role": "button", "name": "Approve this result" },
+      "stepAccept": { "testid": "step-accept" },
+      "accept": { "role": "button", "name": "Accept as new version", "within": "stepAccept" },
+      "stagingBoard": { "testid": "tasks-board" },
+      "stagingColInStaging": { "testid": "board-col-staging" },
+      "stagingColWaiting": { "testid": "board-col-waiting" },
+      "stagingColLive": { "testid": "board-col-live" },
+      "stagingCopyCard": { "testid": "task-card", "hasText": "/Update the home page (heading|copy, banner and footer)/" },
+      "stagingPhoneCard": { "testid": "task-card", "hasText": "/Add a phone field to the (contacts|contact form)/" },
+      "stagingRenameCard": { "testid": "task-card", "hasText": "/Rename the contact (email|name) column/" },
+      "stagingPromote": { "role": "button", "name": "Promote", "exact": true },
+      "stagingPromoteSheet": { "testid": "promote-sheet" },
+      "stagingReviewLink": { "role": "link", "name": "Review", "exact": true },
+      "stagingCardReason": { "testid": "task-card-reason" },
+      "stagingReview": { "testid": "promotion-review" },
+      "stagingApprove": { "role": "button", "name": "Approve", "exact": true, "within": "stagingReview" },
+      "stagingSendBack": { "role": "button", "name": "Send back to staging", "exact": true, "within": "stagingReview" },
+      "stagingHeader": { "testid": "staging-header" }
+    },
+    "texts": {
+      "activeClient": "/^Client$/",
+      "activeDeveloper": "/^Developer$/",
+      "approvedByClient": "Approved by client",
+      "newVersion": "/New version\\s+\\S+/"
+    }
+  },
+  "scenes": {
+    "s01-mess": {
+      "selectors": {
+        "tree": { "role": "tree", "name": "Project files" },
+        "websiteFolder": { "role": "button", "name": "/website/i", "within": "tree", "first": true },
+        "brandFolder": { "role": "button", "name": "/brand/i", "within": "tree", "first": true },
+        "inspector": { "css": ".browser-inspector" },
+        "handoverProjectLink": { "role": "link", "name": "/Agency handover/" },
+        "emptyProject": { "text": "This project has no files yet." },
+        "resourceChips": { "testid": "resource-chips" },
+        "addFiles": { "role": "link", "name": "Add files", "first": true },
+        "intakeZip": { "label": "Project archive (ZIP)" },
+        "checkArchive": { "role": "button", "name": "Check this archive" },
+        "intakeInventory": { "testid": "intake-inventory" },
+        "intakeSecret": { "css": "[data-kind=\"secret\"]", "within": "intakeInventory" },
+        "intakeNested": { "css": "[data-kind=\"nested\"]", "within": "intakeInventory" },
+        "intakeDependencies": { "css": "[data-kind=\"dependency\"]", "within": "intakeInventory" },
+        "intakeAssets": { "testid": "intake-placement", "hasText": "R2", "within": "intakeInventory", "first": true },
+        "intakeStartsEmpty": { "testid": "intake-starts-empty" },
+        "intakeConfirm": { "testid": "intake-confirm" },
+        "intakePending": { "testid": "intake-pending" }
+      },
+      "texts": {
+        "nothingRun": "/\\d+ files? checked, nothing run/",
+        "contentPending": "still to be copied in",
+        "artifactsRepo": "Artifacts repository",
+        "r2Collection": "R2 asset collection",
+        "coordinates": "Coordinates"
+      }
+    },
+    "s02-client-update": {
+      "selectors": {
+        "startUpdate": { "role": "button", "name": "Start an update", "exact": true },
+        "dialog": { "role": "dialog", "name": "Start an update" },
+        "dialogHeading": { "role": "heading", "name": "Start an update", "within": "dialog" },
+        "request": { "label": "What do you want to change?", "within": "dialog" },
+        "getCopy": { "role": "button", "name": "Open working copy", "within": "dialog" },
+        "download": { "role": "link", "name": "Download working copy", "within": "dialog" },
+        "editionCards": { "testid": "edition-cards", "within": "dialog" }
+      },
+      "texts": {}
+    },
+    "s03-own-tool": {
+      "selectors": {
+        "dialog": { "role": "dialog", "name": "Start an update" },
+        "zipInput": { "label": "Edited working copy (ZIP)", "within": "dialog" },
+        "send": { "role": "button", "name": "Send back edited copy", "within": "dialog" },
+        "returnRow": { "testid": "edition-return", "within": "dialog", "first": true },
+        "returnSummary": { "testid": "return-summary", "within": "returnRow" }
+      },
+      "texts": {
+        "returnSettled": "/Ready for review|Nothing to change|Out of date|Conflicts with newer work|Refused|Failed/",
+        "readyForReview": "Ready for review"
+      }
+    },
+    "s04-three-agents": {
+      "selectors": {
+        "lanes": { "testid": "lanes" },
+        "changeRow": { "testid": "change-row" },
+        "lane": { "testid": "lane", "within": "lanes" }
+      },
+      "texts": {
+        "agentsAtOnce": "/Up to \\d+ sessions at once/",
+        "someWorking": "/\\b[1-9]\\d* working now/",
+        "noneWorking": "/(^|\\D)0 working now/"
+      }
+    },
+    "s05-collision": {
+      "selectors": {
+        "blocked": { "testid": "blocked-banner" },
+        "runnerOutput": { "text": "Runner output", "within": "blocked" },
+        "evidence": { "css": ".evidence" },
+        "contractFailChip": { "testid": "contract-fail-chip" },
+        "changeRail": { "testid": "change-rail" },
+        "reviewBrief": { "testid": "review-brief" },
+        "storyStatus": { "testid": "story-status" },
+        "copyRepairBrief": { "role": "button", "name": "Copy repair brief for the agent" }
+      },
+      "texts": {
+        "productionUnchanged": "Production is unchanged"
+      }
+    },
+    "s06-repair-preview": {
+      "selectors": {
+        "fixed": { "testid": "fixed-banner" },
+        "buildPreview": { "role": "button", "name": "/^Build (a new )?preview$/" },
+        "openPreview": { "testid": "open-preview" },
+        "previewSubmit": { "role": "button", "name": "Get quote" },
+        "previewResult": { "css": "#quote-result" },
+        "previewBeforeAfter": { "testid": "preview-before-after" }
+      },
+      "texts": {
+        "fixed": "Fixed"
+      }
+    },
+    "s07-approve-publish": {
+      "selectors": {
+        "showFullCode": { "role": "button", "name": "Show full code", "within": "proposalHash" },
+        "trail": { "testid": "decision-trail" },
+        "stepPublish": { "testid": "step-publish" },
+        "prepare": { "role": "button", "name": "Prepare release", "within": "stepPublish" },
+        "approvePublish": { "role": "button", "name": "Approve publishing this release", "within": "stepPublish" },
+        "publish": { "role": "button", "name": "Publish to production", "within": "stepPublish" },
+        "livePill": { "css": ".pill", "hasText": "/^Live$/", "within": "stepPublish" },
+        "releaseRecord": { "testid": "release-record", "within": "stepPublish" },
+        "decisionRail": { "testid": "decision-rail" },
+        "releaseReceipt": { "testid": "release-receipt" }
+      },
+      "texts": {
+        "liveTrail": "Live ·"
+      }
+    },
+    "s08-restore-export": {
+      "selectors": {
+        "resources": { "role": "navigation", "name": "Resources" },
+        "resourceWebsite": { "role": "button", "name": "/website/i", "within": "resources", "first": true },
+        "resourceBrand": { "role": "button", "name": "/brand/i", "within": "resources", "first": true },
+        "versions": { "testid": "versions" },
+        "version": { "css": ".version", "within": "versions" },
+        "restoreRow": { "role": "button", "name": "Restore this version", "within": "versions", "first": true },
+        "restoreVersion": { "testid": "restore-version", "within": "versions", "first": true },
+        "confirm": { "css": ".confirm" },
+        "confirmRestore": { "role": "button", "name": "Restore this version", "within": "confirm" },
+        "restored": { "role": "status", "hasText": "Restored." },
+        "exportButton": { "role": "button", "name": "Export", "exact": true },
+        "exportDialog": { "role": "dialog", "name": "Export project" },
+        "startExport": { "role": "button", "name": "Start export", "within": "exportDialog" },
+        "bundleLink": { "role": "link", "name": "/\\.bundle$/", "within": "exportDialog", "first": true },
+        "publishVersion": { "testid": "publish-version" },
+        "publishThisVersion": { "role": "button", "name": "Publish this version", "within": "publishVersion" },
+        "approvePublishVersion": { "role": "button", "name": "Approve publishing this release", "within": "publishVersion" },
+        "publishVersionDeploy": { "role": "button", "name": "Publish to production", "within": "publishVersion" },
+        "publishVersionLive": { "css": ".badge", "hasText": "/^Live$/", "within": "publishVersion" },
+        "assetRestoreNote": { "testid": "publish-version-assets" }
+      },
+      "texts": {
+        "exportReady": "Ready. One file per resource",
+        "restoreNotProduction": "Restoring changed the accepted version, not production",
+        "approvedNotLive": "Approved, not live"
+      }
+    }
+  }
+}

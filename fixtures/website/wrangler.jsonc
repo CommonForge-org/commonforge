@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Demo client website: a static-assets-only Worker serving the Vite build.
+  // Build with VITE_QUOTE_API_URL set to the api origin, then `pnpm run deploy`.
+  // Only the CommonForge publish step deploys this, from an accepted release.
+  "name": "commonforge-demo-website",
+  "compatibility_date": "2026-08-22",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}

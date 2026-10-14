@@ -1,0 +1,201 @@
+{
+  "hashes": "clips/hashes.json",
+  "manual": [
+    "clips/shot-01-client-folder.png"
+  ],
+  "scenes": {
+    "s00-title": {},
+    "s01-mess": {
+      "clip": "clips/clip-01-intake.webm",
+      "shots": [
+        "clips/shot-01-client-folder.png"
+      ],
+      "casts": [
+        {
+          "src": "clips/cast-intake.cast",
+          "speed": 1.1
+        }
+      ],
+      "callouts": [
+        {
+          "t": 6,
+          "x": 0.02,
+          "y": 0.42,
+          "w": 0.96,
+          "h": 0.08,
+          "label": "Nested repo kept intact"
+        },
+        {
+          "t": 14,
+          "x": 0.02,
+          "y": 0.58,
+          "w": 0.96,
+          "h": 0.08,
+          "label": "50 MB video routed to R2"
+        },
+        {
+          "t": 22,
+          "x": 0.02,
+          "y": 0.74,
+          "w": 0.96,
+          "h": 0.08,
+          "label": ".env blocked, value hidden"
+        }
+      ]
+    },
+    "s02-client-update": {
+      "clip": "clips/clip-02-edition.webm",
+      "casts": [
+        "clips/cast-02-clone.cast"
+      ],
+      "callouts": [
+        {
+          "t": 8,
+          "x": 0.55,
+          "y": 0.2,
+          "w": 0.35,
+          "h": 0.12,
+          "label": "Client role: edition only"
+        }
+      ]
+    },
+    "s03-own-tool": {
+      "clip": "clips/clip-03-own-tool.webm",
+      "callouts": [
+        {
+          "t": 34,
+          "x": 0.5,
+          "y": 0.55,
+          "w": 0.4,
+          "h": 0.14,
+          "label": "2 files changed, 0 blocked"
+        }
+      ]
+    },
+    "s04-three-agents": {
+      "castOffsetSec": -47.254,
+      "clip": {
+        "src": "clips/clip-04-lanes.webm",
+        "speed": 4.7
+      },
+      "casts": [
+        "clips/cast-04-agent-a.cast",
+        "clips/cast-04-agent-b.cast",
+        "clips/cast-04-agent-c.cast"
+      ],
+      "speed": 4.7,
+      "callouts": [
+        {
+          "t": 50,
+          "x": 0.05,
+          "y": 0.15,
+          "w": 0.5,
+          "h": 0.2,
+          "label": "concurrency.json: overlapping task.started"
+        }
+      ]
+    },
+    "s05-collision": {
+      "clip": "clips/clip-05-collision.webm",
+      "shots": [
+        "clips/shot-05-contract-fail.png"
+      ],
+      "callouts": [
+        {
+          "t": 12,
+          "x": 0.55,
+          "y": 0.25,
+          "w": 0.35,
+          "h": 0.1,
+          "label": "mergeOutcome: clean"
+        },
+        {
+          "t": 20,
+          "x": 0.55,
+          "y": 0.38,
+          "w": 0.35,
+          "h": 0.1,
+          "label": "contractChecks: quote FAIL"
+        },
+        {
+          "t": 32,
+          "x": 0.55,
+          "y": 0.51,
+          "w": 0.35,
+          "h": 0.1,
+          "label": "Needs your decision"
+        }
+      ]
+    },
+    "s06-repair-preview": {
+      "clip": "clips/clip-06-preview.webm",
+      "callouts": [
+        {
+          "t": 10,
+          "x": 0.1,
+          "y": 0.12,
+          "w": 0.4,
+          "h": 0.1,
+          "label": "New proposal hash"
+        },
+        {
+          "t": 30,
+          "x": 0.1,
+          "y": 0.06,
+          "w": 0.6,
+          "h": 0.08,
+          "label": "Separate preview origin"
+        },
+        {
+          "t": 42,
+          "x": 0.6,
+          "y": 0.6,
+          "w": 0.3,
+          "h": 0.15,
+          "label": "Side-effect counters unchanged"
+        }
+      ]
+    },
+    "s07-approve-publish": {
+      "clip": {
+        "src": "clips/clip-07-publish.webm",
+        "speed": 3.3
+      },
+      "shots": [
+        "clips/shot-07-client-view.png",
+        "clips/shot-07-developer-view.png"
+      ],
+      "callouts": [
+        {
+          "t": 15,
+          "x": 0.55,
+          "y": 0.3,
+          "w": 0.38,
+          "h": 0.14,
+          "label": "Release receipt: live version observed"
+        }
+      ]
+    },
+    "s08-restore-export": {
+      "clip": "clips/clip-08-restore.webm",
+      "casts": [
+        "clips/cast-release.cast",
+        {
+          "src": "clips/cast-08-bundle-verify.cast",
+          "speed": 1.5
+        }
+      ],
+      "callouts": [
+        {
+          "t": 8,
+          "x": 0.1,
+          "y": 0.3,
+          "w": 0.4,
+          "h": 0.12,
+          "label": "Restore = new forward version"
+        }
+      ]
+    },
+    "s09-close": {}
+  }
+}

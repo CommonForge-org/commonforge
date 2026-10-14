@@ -1,0 +1,109 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    name: Typecheck, build, unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6.1.0 # version comes from package.json "packageManager"
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm build
+      # Packages create their own Vitest pools, workerd isolates and git subprocesses.
+      # Avoid nested package-level parallelism competing against test deadlines.
+      - run: pnpm exec turbo run test --concurrency=1
+
+  # Task 23: fault injection (plan §G.5), the security acceptance suite and the fixture-mode UI e2e.
+  # None needs credentials. The local-stack e2e (`test:e2e:stack`, wrangler dev with in-process
+  # fakes) is CI-capable too but not run here; the live rehearsal stays in the gated job below.
+  suites:
+    name: Fault, security and fixture e2e suites
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6.1.0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm test:fault
+      - run: pnpm test:security
+      - id: pw
+        run: echo "version=$(pnpm --filter @commonforge-org/web exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+      - run: pnpm --filter @commonforge-org/web exec playwright install-deps chromium
+      - run: pnpm --filter @commonforge-org/web exec playwright install chromium
+      - run: pnpm --filter @commonforge-org/web run test:e2e:fixture
+        env:
+          CI: "true"
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-fixture
+          path: |
+            apps/web/playwright-report/
+            apps/web/test-results/
+          retention-days: 7
+
+  # Secrets are not readable in a job-level `if`, so detect them in a tiny job first.
+  # Fork PRs never receive secrets, so the live job is skipped there.
+  live-gate:
+    name: Detect live-provider credentials
+    runs-on: ubuntu-latest
+    outputs:
+      enabled: ${{ steps.check.outputs.enabled }}
+    steps:
+      - id: check
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+        run: |
+          if [ -n "$CF_API_TOKEN" ]; then echo "enabled=true" >> "$GITHUB_OUTPUT"; else echo "enabled=false" >> "$GITHUB_OUTPUT"; fi
+
+  live:
+    name: Live-provider tests (Artifacts / R2)
+    needs: [unit, live-gate]
+    if: needs.live-gate.outputs.enabled == 'true'
+    runs-on: ubuntu-latest
+    # One live run at a time: they share the account's ci namespaces and rate limits.
+    concurrency:
+      group: commonforge-live
+      cancel-in-progress: false
+    env:
+      CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+      CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+      COMMONFORGE_NAMESPACE_PREFIX: commonforge-ci
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6.1.0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm -r test:live

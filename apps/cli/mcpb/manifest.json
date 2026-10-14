@@ -1,0 +1,28 @@
+{
+  "manifest_version": "0.2",
+  "name": "commonforge",
+  "display_name": "CommonForge",
+  "version": "0.0.0",
+  "description": "Create, check out and submit CommonForge tasks from Claude.",
+  "long_description": "Work with a CommonForge project from Claude: sign in with a one-time code from the CommonForge app, list your projects and tasks, ask for a change in plain words, and, in an agent with access to your files, check a task out, do the work and submit it. Everything goes through your CommonForge server, which checks your role on every request, exactly as the cforge CLI does.",
+  "author": { "name": "CommonForge contributors" },
+  "repository": { "type": "git", "url": "https://github.com/CommonForge-org/commonforge" },
+  "homepage": "https://github.com/CommonForge-org/commonforge/tree/main/apps/cli#readme",
+  "icon": "icon.png",
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/server/index.js", "mcp"],
+      "env": {}
+    }
+  },
+  "tools": [],
+  "keywords": ["commonforge", "tasks", "agency", "git", "cloudflare"],
+  "license": "MIT",
+  "compatibility": {
+    "platforms": ["darwin", "linux", "win32"],
+    "runtimes": { "node": ">=22.0.0" }
+  }
+}

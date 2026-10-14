@@ -1,0 +1,37 @@
+{
+  "name": "@commonforge-org/worker",
+  "version": "0.0.0",
+  "private": true,
+  "description": "CommonForge control plane: Cloudflare Worker (Hono) with the OrgLedger Durable Object",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "build": "wrangler deploy --dry-run --outdir dist",
+    "deploy": "wrangler deploy",
+    "types": "wrangler types",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:fault": "vitest run test/fault",
+    "test:security": "vitest run test/security test/api/authz-matrix.test.ts test/api/projects.test.ts test/api/tasks.test.ts test/api/review.test.ts test/api/runner.test.ts test/api/flow.test.ts test/api/task-assets.test.ts test/api/editions.test.ts test/api/previews.test.ts test/preview-worker.test.ts test/api/auth.test.ts test/api/releases.test.ts test/security/lfs-staging.test.ts",
+    "test:live": "echo \"worker: no live tests yet\""
+  },
+  "dependencies": {
+    "@cloudflare/sandbox": "^1.0.0",
+    "@commonforge-org/core": "workspace:*",
+    "@commonforge-org/ledger": "workspace:*",
+    "@commonforge-org/provider-cloudflare": "workspace:*",
+    "@commonforge-org/runner-protocol": "workspace:*",
+    "hono": "^4.13.13",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.22.0",
+    "@cloudflare/workers-types": "^5.20261006.1",
+    "@commonforge-org/web": "workspace:*",
+    "@types/node": "^26.6.4",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11",
+    "wrangler": "^4.147.0"
+  }
+}

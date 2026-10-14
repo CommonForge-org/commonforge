@@ -1,0 +1,15 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "test": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/fixtures/api/src/**",
+        "$TURBO_ROOT$/fixtures/api/package.json",
+        "$TURBO_ROOT$/fixtures/requirements/contracts/**"
+      ],
+      "env": ["QUOTE_API_URL", "QUOTE_API_DIR", "QUOTE_SCHEMA_PATH"]
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "name": "@commonforge-org/monorepo",
+  "private": true,
+  "type": "module",
+  "description": "CommonForge: versioned workspaces for concurrent agents on Cloudflare Workers + Artifacts",
+  "license": "MIT",
+  "packageManager": "pnpm@12.5.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "test:e2e": "turbo run test:e2e",
+    "test:fault": "turbo run test:fault",
+    "test:security": "turbo run test:security",
+    "test:live": "turbo run test:live",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
+    "dev:local": "scripts/dev-local.sh"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "turbo": "^2.11.7",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11"
+  }
+}

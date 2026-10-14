@@ -1,0 +1,88 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>LFS spike: multipart upload</title>
+<body style="font:14px system-ui;margin:1.5rem">
+<h1>Multipart upload test</h1>
+<p>Bearer token is read from <code>location.hash</code> and never stored.</p>
+<label>Size (MB) <input id="mb" type="number" min="1" value="100"></label>
+<label>Abort after N parts (0 = never) <input id="abortAfter" type="number" min="0" value="0"></label>
+<button id="go">Start</button>
+<pre id="log" style="background:#eee;padding:.5rem;min-height:6rem"></pre>
+<script>
+const PART = 50 * 1024 * 1024;
+const logEl = document.getElementById("log");
+const log = (m) => { logEl.textContent += m + "\n"; };
+const token = decodeURIComponent(location.hash.slice(1));
+const auth = { authorization: "Bearer " + token };
+
+function makePart(n) {
+  const buf = new Uint8Array(n);
+  for (let o = 0; o < n; o += 65536) crypto.getRandomValues(buf.subarray(o, Math.min(o + 65536, n)));
+  return buf;
+}
+
+async function run(sizeMb, abortAfter) {
+  const size = sizeMb * 1024 * 1024;
+  // R6: every multipart key lives under lfs/mp/ (teardown deletes lfs/); unique per run.
+  const key = "lfs/mp/page-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
+  const q = (extra) => "key=" + encodeURIComponent(key) + (extra || "");
+  const t0 = performance.now();
+  let retries = 0;
+  const partMs = [];
+  let genMs = 0;
+  const statuses = []; // every HTTP status seen for a part PUT (including failed attempts)
+  const attemptsLog = [];
+  const r = await fetch("/mp/create?" + q(), { method: "POST", headers: auth });
+  if (!r.ok) throw new Error("create " + r.status);
+  const { uploadId } = await r.json();
+  window.mp = { key, uploadId };
+  const parts = [];
+  for (let n = 1, off = 0; off < size; n++, off += PART) {
+    const tg = performance.now();
+    let body = makePart(Math.min(PART, size - off)); // one part at a time; dropped before the next
+    genMs += performance.now() - tg;
+    const bytes = body.byteLength;
+    let etag;
+    const tp = performance.now();
+    for (let attempt = 0; attempt < 4 && !etag; attempt++) {
+      try {
+        const pr = await fetch("/mp/part?" + q("&uploadId=" + encodeURIComponent(uploadId) + "&n=" + n), { method: "PUT", headers: auth, body });
+        statuses.push(pr.status);
+        if (!pr.ok) throw new Error("part " + n + " " + pr.status);
+        etag = (await pr.json()).etag;
+      } catch (e) {
+        attemptsLog.push({ n, attempt: attempt + 1, error: String(e && e.message || e) });
+        if (attempt === 3) throw e;
+        retries++;
+        log("part " + n + " failed (" + (e && e.message) + "), retrying");
+      }
+    }
+    body = null;
+    partMs.push(Math.round(performance.now() - tp));
+    parts.push({ partNumber: n, etag });
+    log("part " + n + " done " + bytes + " B in " + partMs[partMs.length - 1] + " ms");
+    window.progress = { done: parts.length };
+    if (abortAfter > 0 && parts.length >= abortAfter && off + PART < size) {
+      const ar = await fetch("/mp/abort?" + q("&uploadId=" + encodeURIComponent(uploadId)), { method: "POST", headers: auth });
+      // does /complete on an aborted upload fail? (record only)
+      const cr2 = await fetch("/mp/complete?" + q("&uploadId=" + encodeURIComponent(uploadId)), { method: "POST", headers: { ...auth, "content-type": "application/json" }, body: JSON.stringify({ parts }) });
+      const cr2Text = (await cr2.text()).slice(0, 200);
+      return { aborted: true, abortStatus: ar.status, completeAfterAbortStatus: cr2.status, completeAfterAbortBody: cr2Text, partsUploaded: parts.length, partMs, genMs: Math.round(genMs), statuses, retries, attemptsLog, ms: Math.round(performance.now() - t0), key, uploadId };
+    }
+  }
+  const cr = await fetch("/mp/complete?" + q("&uploadId=" + encodeURIComponent(uploadId)), { method: "POST", headers: { ...auth, "content-type": "application/json" }, body: JSON.stringify({ parts }) });
+  if (!cr.ok) throw new Error("complete " + cr.status);
+  const done = await cr.json();
+  return { size: done.size, ms: Math.round(performance.now() - t0), parts: parts.length, retries, partMs, genMs: Math.round(genMs), statuses, attemptsLog, key };
+}
+
+document.getElementById("go").onclick = async () => {
+  window.result = undefined;
+  try {
+    window.result = await run(Number(document.getElementById("mb").value), Number(document.getElementById("abortAfter").value));
+  } catch (e) {
+    window.result = { error: String(e && e.message || e), key: window.mp && window.mp.key, uploadId: window.mp && window.mp.uploadId };
+  }
+  log(JSON.stringify(window.result));
+};
+</script>

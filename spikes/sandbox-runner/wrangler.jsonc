@@ -1,0 +1,33 @@
+// Task 3 spike only. Deploy: see RESULTS.md ("Reproduce"). Delete with `wrangler delete`.
+{
+  "name": "commonforge-spike-sandbox",
+  "main": "worker.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "observability": { "enabled": true },
+
+  "containers": [
+    {
+      "class_name": "SpikeRunner",
+      "scheduling_policy": "durable_object",
+      "images": { "runner": { "dockerfile": "./Dockerfile" } }
+    }
+  ],
+  "durable_objects": {
+    "bindings": [{ "name": "RUNNER", "class_name": "SpikeRunner" }]
+  },
+  "exports": {
+    "SpikeRunner": { "type": "durable-object", "storage": "sqlite" }
+  },
+
+  "artifacts": [
+    { "binding": "ARTIFACTS", "namespace": "commonforge-spike", "remote": true }
+  ],
+
+  "vars": {
+    // SPIKE ONLY: committed stub HMAC key, matches spikes/fixtures/make-signed-job.mjs.
+    "SPIKE_JOB_KEY": "commonforge-spike-stub-key-not-a-secret"
+  }
+  // Secret (not committed): SPIKE_ADMIN_TOKEN via `wrangler secret put`.
+}

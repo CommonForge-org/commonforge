@@ -1,0 +1,33 @@
+{
+  "job": {
+    "kind": "prepare-candidate",
+    "candidate": {
+      "candidateId": "cand-spike-0001",
+      "taskWorkspaceId": "tw-spike-0001",
+      "resourceId": "res-spike-site",
+      "baseRevision": "main",
+      "sha": "0000000000000000000000000000000000000000",
+      "treeId": "0000000000000000000000000000000000000000",
+      "frozenAt": "2026-10-14T05:20:45.209Z",
+      "submitter": {
+        "kind": "agent",
+        "id": "spike-agent"
+      },
+      "tool": "spike",
+      "changedPaths": [
+        "run.html",
+        "runs/"
+      ]
+    },
+    "canonical": {
+      "namespace": "commonforge-spike",
+      "repoName": "spike-runner"
+    },
+    "retentionRef": "refs/commonforge/retained/cand-spike-0001"
+  },
+  "jobId": "job-spike-0001",
+  "issuedAt": "2026-10-14T05:20:45.209Z",
+  "expiresAt": "2026-10-16T05:20:45.209Z",
+  "credentialBroker": "https://commonforge-spike-sandbox.example.workers.dev/broker",
+  "sig": "59d93a0a6b787d6c3bbf75516c69700d35b3c3be022645f4971e2b73ebfb555d"
+}

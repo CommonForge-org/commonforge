@@ -1,0 +1,42 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Task 22: the Sandbox integration runner. Consumes commonforge-runner-jobs; one container per job
+  // (RunnerBox), egress only through per-job gateways (src/sandbox/gateway.ts). Deploy:
+  //   WRANGLER_DOCKER_BIN=<docker or a `sudo -n docker` wrapper> pnpm exec wrangler deploy -c wrangler.runner.jsonc \
+  //     --var COMMONFORGE_WORKER_URL:https://commonforge-worker.<sub>.workers.dev \
+  //     --var COMMONFORGE_PREVIEW_URL:https://commonforge-preview.<sub>.workers.dev
+  // `wrangler delete` leaves the container application: also run `wrangler containers delete`.
+  "name": "commonforge-runner",
+  "main": "src/sandbox/index.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "observability": { "enabled": true },
+
+  "containers": [
+    {
+      "class_name": "RunnerBox",
+      "scheduling_policy": "durable_object",
+      "images": { "runner": { "dockerfile": "../runner/Dockerfile", "build_context": "../.." } }
+    }
+  ],
+  "durable_objects": { "bindings": [{ "name": "RUNNER_BOX", "class_name": "RunnerBox" }] },
+  "exports": { "RunnerBox": { "type": "durable-object", "storage": "sqlite" } },
+
+  // the control plane (broker, results, blobs) is reached only through this binding
+  "services": [{ "binding": "CONTROL", "service": "commonforge-worker" }],
+
+  "queues": {
+    "consumers": [
+      // a job runs for minutes: one per invocation, a few retries while the job is still valid
+      { "queue": "commonforge-runner-jobs", "max_batch_size": 1, "max_batch_timeout": 1, "max_retries": 3, "max_concurrency": 10 }
+    ]
+  },
+
+  "vars": {
+    "COMMONFORGE_WORKER_URL": "",
+    "COMMONFORGE_PREVIEW_URL": "",
+    // must equal the control plane's (review C-1: the gateway re-checks every release target name)
+    "COMMONFORGE_DEPLOY_WORKER_PREFIX": "cfapp"
+  }
+}

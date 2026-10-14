@@ -1,0 +1,66 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Task 23: LOCAL e2e stack only (apps/web/e2e/local-stack.spec.ts). Never deploy this config.
+  // `wrangler dev -c wrangler.e2e.jsonc` runs the real Worker (e2e/stack.ts wraps src/app.ts) with
+  // local D1, Durable Objects, R2 and queues; Artifacts, the runner and the Cloudflare API are
+  // in-memory fakes inside e2e/stack.ts (see docs/LIMITATIONS.md "What the suites fake").
+  "name": "commonforge-worker-e2e",
+  "main": "e2e/stack.ts",
+  "compatibility_date": "2026-08-22",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "assets": {
+    "directory": "../web/dist",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/health", "/__e2e/*"]
+  },
+  "durable_objects": {
+    "bindings": [
+      { "name": "ORG_LEDGER", "class_name": "OrgLedger" },
+      { "name": "OPS_GATE", "class_name": "OpsGate" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["OrgLedger"] },
+    { "tag": "v2", "new_sqlite_classes": ["OpsGate"] }
+  ],
+  "d1_databases": [{ "binding": "DB", "database_name": "commonforge-e2e", "database_id": "00000000-0000-4000-8000-0000000000e2", "migrations_dir": "migrations" }],
+  "r2_buckets": [{ "binding": "COMMONFORGE_ASSETS", "bucket_name": "commonforge-assets-e2e" }],
+  // e2e-only queue names: a mistaken deploy of this config can never consume production messages
+  // (e2e/stack.ts maps them back to the names the src consumers switch on, and refuses non-local URLs)
+  "queues": {
+    "producers": [
+      { "binding": "OUTBOX", "queue": "commonforge-e2e-outbox" },
+      { "binding": "STEPS", "queue": "commonforge-e2e-steps" },
+      { "binding": "RUNNER_JOBS", "queue": "commonforge-e2e-runner-jobs" }
+    ],
+    "consumers": [
+      { "queue": "commonforge-e2e-outbox", "max_batch_size": 4, "max_batch_timeout": 1, "max_retries": 10 },
+      { "queue": "commonforge-e2e-steps", "max_batch_size": 4, "max_batch_timeout": 1, "max_retries": 10 },
+      // the fake runner (e2e/stack.ts); in production the Sandbox runner consumes these jobs
+      { "queue": "commonforge-e2e-runner-jobs", "max_batch_size": 1, "max_batch_timeout": 1, "max_retries": 3 }
+    ]
+  },
+  // The hash step streams up to 5 GB through SHA-256; the default 30 s of CPU is not enough.
+  "limits": { "cpu_ms": 300000 },
+
+  "vars": {
+    "COMMONFORGE_NAMESPACE_PREFIX": "commonforge-e2e",
+    "COMMONFORGE_ASSETS_BUCKET": "commonforge-assets-e2e",
+    "COMMONFORGE_APP_URL": "http://127.0.0.1:8799",
+    "COMMONFORGE_PUBLIC_URL": "http://127.0.0.1:8799",
+    "COMMONFORGE_EMAIL_FROM": "login@example.test",
+    // the sign-in link is written to the Worker log; the spec reads it from there
+    "COMMONFORGE_EMAIL_MODE": "log",
+    // the local-stack spec's owner (apps/web/e2e/local-stack.spec.ts) creates the org
+    "COMMONFORGE_ADMIN_EMAILS": "owner@agency.e2e.test",
+    "COMMONFORGE_DEPLOY_WORKER_PREFIX": "cfapp",
+    // deterministic local-only secrets (like vitest.config.ts); never real credentials
+    "COMMONFORGE_SESSION_SECRET": "e2e-session-secret-0123456789abcdef0123456789",
+    "COMMONFORGE_RUNNER_JOB_KEY": "e2e-runner-job-key-0123456789abcdef0123456789",
+    "CF_ACCOUNT_ID": "0123456789abcdef0123456789abcdef",
+    "CF_API_TOKEN": "e2e-api-token-not-real",
+    "COMMONFORGE_DEPLOY_API_TOKEN": "e2e-deploy-token-not-real-0123456789",
+    "COMMONFORGE_E2E_KEY": "e2e-local-only-key"
+  }
+}

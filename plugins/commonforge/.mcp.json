@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "commonforge": {
+      "command": "npx",
+      "args": ["-y", "@commonforge-org/cli", "mcp"]
+    }
+  }
+}

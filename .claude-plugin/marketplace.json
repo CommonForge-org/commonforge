@@ -1,0 +1,12 @@
+{
+  "name": "commonforge",
+  "owner": { "name": "CommonForge contributors" },
+  "metadata": { "description": "The CommonForge plugin for Claude Code." },
+  "plugins": [
+    {
+      "name": "commonforge",
+      "source": "./plugins/commonforge",
+      "description": "Create, check out and submit CommonForge tasks from Claude Code."
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "name": "@commonforge-org/runner-protocol",
+  "version": "0.0.0",
+  "description": "CommonForge engine: integration runner job schemas and materialization",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./node": {
+      "types": "./dist/node/index.d.ts",
+      "import": "./dist/node/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.worker.json --noEmit",
+    "test": "vitest run",
+    "test:security": "vitest run test/verify-materialization.test.ts test/materialize-plan.test.ts test/redact.test.ts test/sign.test.ts test/evidence.test.ts"
+  },
+  "dependencies": {
+    "@commonforge-org/core": "workspace:*",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11"
+  }
+}

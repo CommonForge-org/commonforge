@@ -1,0 +1,40 @@
+{
+  "name": "@commonforge-org/runner",
+  "version": "0.0.0",
+  "private": true,
+  "description": "CommonForge integration runner (Sandbox container image or local Node process)",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "bin": {
+    "commonforge-runner": "./dist/main.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:security": "vitest run test/build-edition.test.ts test/edition-return.test.ts test/zip.test.ts test/isolation.test.ts test/preview-host.test.ts test/release.test.ts",
+    "test:live": "echo \"runner: no live tests yet\"",
+    "dev": "tsx src/main.ts",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@commonforge-org/core": "workspace:*",
+    "@commonforge-org/provider-cloudflare": "workspace:*",
+    "@commonforge-org/provider-local-git": "workspace:*",
+    "@commonforge-org/runner-protocol": "workspace:*",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@commonforge-org/conformance": "workspace:*",
+    "@types/node": "^26.6.4",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11"
+  }
+}

@@ -1,0 +1,122 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "commonforge-worker",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-22",
+  // global_fetch_strictly_public (Task 22): the release health check GETs `<demo>.workers.dev/version`;
+  // without it a fetch to another Worker on the same account's workers.dev fails with error 1042.
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "observability": { "enabled": true },
+
+  // The web app (apps/web, built first: @commonforge-org/web is a devDependency for turbo order)
+  // is served from this Worker's origin, so the session cookie and the CSRF origin check need no
+  // CORS. /api/* always runs the Worker; any other path is a static asset, falling back to
+  // index.html (SPA) so /auth/verify and deep links load the app.
+  "assets": {
+    "directory": "../web/dist",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/health"]
+  },
+
+  // Cloudflare Artifacts (open beta). Miniflare has no local simulator for this
+  // binding; it is always proxied to the real account, so `wrangler dev` needs
+  // `wrangler login` or CLOUDFLARE_API_TOKEN/CLOUDFLARE_ACCOUNT_ID.
+  // A binding serves exactly one namespace; per-org namespaces
+  // (<prefix>-<org>-canonical|tasks|editions) are reached through the Artifacts REST API
+  // with the CF_ACCOUNT_ID / CF_API_TOKEN secrets (see API.md "Artifacts transport").
+  "artifacts": [
+    { "binding": "ARTIFACTS", "namespace": "commonforge-dev", "remote": true }
+  ],
+
+  // Durable Objects: the per-org acceptance ledger and the per-namespace ops gate (A9 rate cap).
+  "durable_objects": {
+    "bindings": [
+      { "name": "ORG_LEDGER", "class_name": "OrgLedger" },
+      { "name": "OPS_GATE", "class_name": "OpsGate" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["OrgLedger"] },
+    { "tag": "v2", "new_sqlite_classes": ["OpsGate"] }
+  ],
+
+  // Directory (users, sessions, orgs, roles, projects, mounts, grants, tasks, jobs, intake).
+  // Authority over accepted state stays in OrgLedger.
+  // database_id is a PLACEHOLDER (local `wrangler dev` and the tests accept it): a deploy writes the
+  // real one into a git-ignored config (scripts/deploy-live.sh: COMMONFORGE_D1_DATABASE_ID;
+  // scripts/bootstrap.sh: the database it creates).
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "commonforge-dev",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+
+  // Large/binary assets and staged uploads.
+  "r2_buckets": [
+    { "binding": "COMMONFORGE_ASSETS", "bucket_name": "commonforge-assets-dev" }
+  ],
+
+  // Magic-link email (Cloudflare Email Service). login@example.com is a PLACEHOLDER: a deploy sets the
+  // sender onboarded for Email Sending here and in COMMONFORGE_EMAIL_FROM (scripts/deploy-live.sh,
+  // scripts/bootstrap.sh --email-from).
+  "send_email": [
+    { "name": "EMAIL", "allowed_sender_addresses": ["login@example.com"] }
+  ],
+
+  "queues": {
+    "producers": [
+      // Outbox: ledger-committed side effects (reconcile-ref after accept/restore, projections), plus
+      // reconcile requests from pushed wakeups and the GC backstop. Consumer: services/outbox-consumer.ts.
+      { "binding": "OUTBOX", "queue": "commonforge-outbox" },
+      // Worker-internal steps (workspace provisioning, URL import, candidate preparation).
+      { "binding": "STEPS", "queue": "commonforge-steps" },
+      // Signed runner jobs; consumed by the integration runner (Task 14).
+      { "binding": "RUNNER_JOBS", "queue": "commonforge-runner-jobs" }
+    ],
+    "consumers": [
+      // Applied once per (organizationId, dedupeKey); after 10 deliveries → the DLQ below
+      // (max_retries must match OUTBOX_MAX_RETRIES).
+      {
+        "queue": "commonforge-outbox",
+        // 4 × up to 90 s runner wait stays well inside the consumer's 15 min wall time (M-8)
+        "max_batch_size": 4,
+        "max_batch_timeout": 5,
+        "max_retries": 10,
+        "dead_letter_queue": "commonforge-outbox-dlq"
+      },
+      // Dead letters: recorded as `outbox.dead_lettered` events; the GC sweep re-requests reconciles.
+      { "queue": "commonforge-outbox-dlq", "max_batch_size": 10, "max_batch_timeout": 5, "max_retries": 3 },
+      { "queue": "commonforge-steps", "max_batch_size": 4, "max_batch_timeout": 1, "max_retries": 10 },
+      // Artifacts event subscriptions (`pushed` on canonical repos): wakeups only, never authority (A6).
+      { "queue": "commonforge-artifacts-events", "max_batch_size": 10, "max_batch_timeout": 2, "max_retries": 5 }
+    ]
+  },
+
+  // GC sweep (plan §C.2 P0 shortcut: every 10 min, 1 h grace); single-flight via the OpsGate lock.
+  "triggers": { "crons": ["*/10 * * * *"] },
+
+  // The hash step streams up to 5 GB through SHA-256; the default 30 s of CPU is not enough.
+  "limits": { "cpu_ms": 300000 },
+
+  "vars": {
+    "COMMONFORGE_NAMESPACE_PREFIX": "commonforge-dev",
+    // Bucket behind COMMONFORGE_ASSETS; git-lfs and browser uploads presign R2 S3 URLs against it
+    "COMMONFORGE_ASSETS_BUCKET": "commonforge-assets-dev",
+    // Base URL of the web app; magic links point at <APP_URL>/auth/verify?token=...
+    "COMMONFORGE_APP_URL": "http://localhost:5173",
+    // Public https URL of this Worker; it becomes `credentialBroker` inside every signed job.
+    // REQUIRED per environment (no default): set it here per deployed env, or in .dev.vars for
+    // `wrangler dev` (http://localhost:8787). Jobs are refused while it is empty.
+    "COMMONFORGE_PUBLIC_URL": "",
+    "COMMONFORGE_EMAIL_FROM": "login@example.com",
+    // send | log  (log: the link is written to the Worker log instead of emailed; dev only)
+    "COMMONFORGE_EMAIL_MODE": "send",
+    // Task 22: the dedicated preview Worker (another origin than this one); previews are refused while empty
+    "COMMONFORGE_PREVIEW_URL": "",
+    // Task 22 review C-1: an org's release Workers are named <prefix>-<orgId>-<name>; commonforge* is refused
+    "COMMONFORGE_DEPLOY_WORKER_PREFIX": "cfapp"
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "name": "@commonforge-org/cli",
+  "version": "0.1.0",
+  "description": "CommonForge developer CLI (cforge): check out, checkpoint and submit CommonForge task workspaces with plain git",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CommonForge-org/commonforge.git",
+    "directory": "apps/cli"
+  },
+  "homepage": "https://github.com/CommonForge-org/commonforge/tree/main/apps/cli#readme",
+  "bugs": {
+    "url": "https://github.com/CommonForge-org/commonforge/issues"
+  },
+  "keywords": [
+    "commonforge",
+    "cli",
+    "git",
+    "agents",
+    "cloudflare"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "cforge": "dist/index.js"
+  },
+  "exports": {
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/index.js",
+    "dist/THIRD_PARTY_LICENSES.txt"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "node scripts/bundle.mjs",
+    "mcpb": "node scripts/bundle.mjs && node scripts/mcpb.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "dev": "tsx src/index.ts",
+    "prepack": "node scripts/bundle.mjs"
+  },
+  "devDependencies": {
+    "@commonforge-org/core": "workspace:*",
+    "@commonforge-org/runner-protocol": "workspace:*",
+    "@types/node": "^26.6.4",
+    "esbuild": "~0.28.2",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11",
+    "zod": "^4.6.5"
+  }
+}

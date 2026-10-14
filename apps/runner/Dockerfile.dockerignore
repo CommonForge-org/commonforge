@@ -1,0 +1,11 @@
+**/node_modules
+**/dist
+**/.turbo
+.git
+.worktrees
+.superpowers
+**/.dev.vars
+**/.env*
+fixtures/brand-assets/*.mp4
+fixtures/canary/out
+spikes

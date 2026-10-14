@@ -1,0 +1,43 @@
+{
+  "name": "@commonforge-org/conformance",
+  "version": "0.0.0",
+  "description": "CommonForge engine: provider and ledger conformance suites",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./provider": {
+      "types": "./dist/provider.d.ts",
+      "import": "./dist/provider.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:fault": "vitest run test/fault-suite.test.ts",
+    "test:security": "vitest run test/provider-suite.test.ts"
+  },
+  "dependencies": {
+    "@commonforge-org/core": "workspace:*",
+    "@commonforge-org/ledger": "workspace:*",
+    "@commonforge-org/runner-protocol": "workspace:*",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11"
+  },
+  "peerDependencies": {
+    "vitest": "^4.1.11"
+  }
+}

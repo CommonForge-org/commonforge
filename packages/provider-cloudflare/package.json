@@ -1,0 +1,35 @@
+{
+  "name": "@commonforge-org/provider-cloudflare",
+  "version": "0.0.0",
+  "description": "CommonForge engine: Cloudflare Artifacts and R2 providers",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:live": "COMMONFORGE_LIVE=1 vitest run live.test"
+  },
+  "dependencies": {
+    "@commonforge-org/core": "workspace:*",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261006.1",
+    "@commonforge-org/runner-protocol": "workspace:*",
+    "@types/node": "^26.6.4",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.11"
+  }
+}

@@ -1,0 +1,7 @@
+# Marks video/ as its own pnpm root so `pnpm install` here never resolves the
+# monorepo workspace above it or touches the root pnpm-lock.yaml.
+packages:
+  - .
+
+onlyBuiltDependencies:
+  - esbuild

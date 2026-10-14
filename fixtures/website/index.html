@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Demo Client Customer Portal</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <img src="/logo.png" alt="Demo Client" width="48" height="48" />
+      <h1>Customer Portal</h1>
+    </header>
+    <main>
+      <form id="quote-form" class="quote-form">
+        <label>Company <input name="customer" value="Demo Client" required maxlength="120" /></label>
+        <label>Plan
+          <select name="plan">
+            <option value="starter">Starter</option>
+            <option value="team" selected>Team</option>
+            <option value="enterprise">Enterprise</option>
+          </select>
+        </label>
+        <label>Seats <input name="seats" type="number" min="1" max="10000" value="12" required /></label>
+        <button type="submit">Get quote</button>
+      </form>
+      <section id="quote-result" aria-live="polite"></section>
+    </main>
+    <footer id="api-version" class="site-footer"></footer>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
