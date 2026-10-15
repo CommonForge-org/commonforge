@@ -39,6 +39,10 @@ export default defineConfig(async () => {
     ],
     test: {
       setupFiles: ["./test/setup.ts"],
+      // API tests run a whole Worker with D1 and take about a second each, but a loaded CI runner has
+      // made them five times slower (editions I-2/M-2/M-3 hit vitest's 5 s default). 15 s still
+      // catches a real hang; tests that need longer keep their own timeout.
+      testTimeout: 15_000,
     },
   };
 });
