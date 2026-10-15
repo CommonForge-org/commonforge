@@ -23,6 +23,12 @@ For developers: it runs entirely on **Cloudflare Workers** and **Cloudflare Arti
 deploy it into your own Cloudflare account with one script, and agents work through a small CLI,
 `cforge`.
 
+<p align="center">
+  <a href="https://youtu.be/m1paaT6kocQ"><img src="docs/images/demo-video.png" alt="Watch the CommonForge demo on YouTube (8:28)" width="720"></a>
+  <br>
+  <a href="https://youtu.be/m1paaT6kocQ"><b>▶ Watch the 8-minute demo on YouTube</b></a>
+</p>
+
 | | |
 |---|---|
 | ![Getting started checklist on a new project](docs/images/getting-started.png) | ![Tasks board with client tasks, one on staging and one an agent is working on](docs/images/tasks-board.png) |
@@ -254,9 +260,13 @@ lists, per suite, what is real and what is faked. [CONTRIBUTING.md](CONTRIBUTING
 
 ## Demo
 
-The project runs its own demo instance of CommonForge on its Cloudflare account. The competition
-demo is a single eight-minute take against it; the script, beat by beat, is
-[docs/DEMO-SCRIPT.md](docs/DEMO-SCRIPT.md).
+**[Watch the demo on YouTube](https://youtu.be/m1paaT6kocQ)** (8:28, with chapters and captions):
+a client's agents and the agency's agents build one feature in parallel, a conflict is caught
+before it ships, the change goes through staging to production, and then a fresh deployment is set
+up from this repository and a client hands a task to Claude Code.
+
+The project runs its own demo instance of CommonForge on its Cloudflare account. The original
+script, beat by beat, is [docs/DEMO-SCRIPT.md](docs/DEMO-SCRIPT.md).
 
 ## Spike results
 
