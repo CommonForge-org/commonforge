@@ -1,0 +1,60 @@
+name: Bug report
+description: Something in CommonForge doesn't work as documented.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. A security problem? Don't file it here: use **Security → Report a vulnerability** (see SECURITY.md).
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where
+      options:
+        - Web app
+        - cforge CLI
+        - MCP (Claude Desktop, Claude Code, Codex)
+        - Integration runner / checks / previews
+        - Releases (deploying a client's site)
+        - bootstrap.sh / teardown.sh
+        - Local stack (scripts/dev-local.sh)
+        - Docs
+        - Something else
+    validations:
+      required: true
+  - type: dropdown
+    id: setup
+    attributes:
+      label: Setup
+      options:
+        - Self-hosted on Cloudflare (bootstrap.sh)
+        - Local stack, no Cloudflare account
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The commit you deployed, and `cforge --version` if the CLI is involved.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Remove tokens, sign-in links and account ids before you paste.
+      render: text

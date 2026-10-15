@@ -5,6 +5,8 @@ an issue first so we can agree on the approach before you write it.
 
 Security problems: do not open a public issue. See [SECURITY.md](SECURITY.md).
 
+Everyone taking part follows the [code of conduct](CODE_OF_CONDUCT.md).
+
 ## Setup
 
 You need Node.js 22 or later, pnpm (the version pinned in `package.json`; `corepack enable` picks

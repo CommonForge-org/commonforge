@@ -1,8 +1,18 @@
 <p align="center">
-  <img src="brand/commonforge-headerlogo-light.png" alt="CommonForge" width="600">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="brand/commonforge-headerlogo-dark.png">
+    <img src="brand/commonforge-headerlogo-light.png" alt="CommonForge" width="600">
+  </picture>
 </p>
 
-# CommonForge
+<h3 align="center">Your clients build. Their agents help. You stay in control.</h3>
+
+<p align="center">
+  <a href="https://github.com/CommonForge-org/commonforge/actions/workflows/ci.yml"><img src="https://github.com/CommonForge-org/commonforge/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://www.npmjs.com/package/@commonforge-org/cli"><img src="https://img.shields.io/npm/v/@commonforge-org/cli?label=cforge%20CLI" alt="npm"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT licence"></a>
+  <a href="https://developers.cloudflare.com/workers/"><img src="https://img.shields.io/badge/runs%20on-Cloudflare%20Workers%20%2B%20Artifacts-F38020?logo=cloudflare&logoColor=white" alt="Runs on Cloudflare Workers and Artifacts"></a>
+</p>
 
 CommonForge is a self-hosted workspace where an agency, its clients and their coding agents change
 a client's website together. Clients ask for changes as tasks. Agents work on each task in an
@@ -293,8 +303,8 @@ The full, honest list is in [docs/LIMITATIONS.md](docs/LIMITATIONS.md).
 
 ## Contributing, security, licence
 
-Contributing: [CONTRIBUTING.md](CONTRIBUTING.md). Reporting a vulnerability: [SECURITY.md](SECURITY.md)
-(not a public issue).
+Contributing: [CONTRIBUTING.md](CONTRIBUTING.md) and the [code of conduct](CODE_OF_CONDUCT.md).
+Reporting a vulnerability: [SECURITY.md](SECURITY.md) (not a public issue).
 
 The code is [MIT](LICENSE) © 2026 CommonForge contributors. Third-party licences:
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
