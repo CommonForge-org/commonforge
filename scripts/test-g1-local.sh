@@ -11,7 +11,7 @@ setsid scripts/dev-real-worker.sh >"$g1_artifacts/launcher.jsonl" 2>"$g1_artifac
 g1_pid=$!
 trap 'kill -- -"$g1_pid" 2>/dev/null || true; wait "$g1_pid" 2>/dev/null || true' EXIT INT TERM
 for ((g1_wait=0;g1_wait<120;g1_wait++)); do
-  if rg -q '"mode":"real-local-worker"' "$g1_artifacts/launcher.jsonl"; then break; fi
+  if grep -Fq '"mode":"real-local-worker"' "$g1_artifacts/launcher.jsonl"; then break; fi
   if ! kill -0 "$g1_pid" 2>/dev/null; then echo 'G1 real-local startup failed; inspect private .g1-artifacts/local-ci/worker.log' >&2; exit 1; fi
   sleep 1
 done

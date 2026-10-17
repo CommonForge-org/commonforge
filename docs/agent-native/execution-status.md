@@ -526,3 +526,7 @@ even when stale output exists. The multi-megabyte bundle compatibility/limit tes
 176 source tests passed after the fix; build-file inspection confirms source tests are excluded.
 Earlier aggregate unit totals include 44 duplicate ledger tests and must not be interpreted as
 unique test counts. PR checks are the authoritative landing result for the final head.
+
+The real-local launcher also relied on `rg`, absent on one hosted runner. Its fixed-string
+readiness check now uses standard `grep`. A fresh `PORT=8959 PREVIEW_PORT=8960 pnpm test:g1:local`
+passed all five actual browser journeys and canonical recovery verification after this change.
