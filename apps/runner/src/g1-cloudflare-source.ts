@@ -1,3 +1,4 @@
+import { CandidateExecutionError, candidateErrorResults } from './g1-scenario-failure.js';
 /** Bounded actual source -> build -> workerd adapter for the scheduling reference target.
  * Deliberately not a general build system. Source files are fetched by the supervisor at the
  * signed exact Git revision; the candidate cannot substitute a test harness or build receipt. */
@@ -31,19 +32,21 @@ async function buildIsolated(files: Record<string, Uint8Array>): Promise<Uint8Ar
   if (Object.keys(files).sort().join(',') !== [...CLOUDFLARE_SCHEDULING_SOURCE_FILES].sort().join(',') || Object.values(files).some(f => f.length > 1048576)) throw new Error('bounded exact source files required');
   const scratch = await mkdtemp(join(tmpdir(), 'commonforge-g1-cloud-build-'));
   await chmod(scratch, 0o700);
-  let child: ReturnType<typeof spawn> | undefined;
+  let child: ReturnType<typeof spawn> | undefined; let sandboxStarted = false;
   try {
     for (const path of CLOUDFLARE_SCHEDULING_SOURCE_FILES) await writeFile(join(scratch, path), files[path]!, { mode: 0o400 });
     const node = await realpath(process.execPath);
     child = spawn('bwrap', ['--unshare-all', '--die-with-parent', '--new-session', '--cap-drop', 'ALL',
       '--ro-bind', '/usr', '/usr', '--ro-bind', '/lib', '/lib', '--ro-bind', '/lib64', '/lib64',
       '--ro-bind', node, '/node', '--proc', '/proc', '--dev', '/dev', '--tmpfs', '/tmp',
-      '--bind', scratch, '/candidate', '--chdir', '/candidate', '/node', 'build.mjs'],
-    { env: { PATH: '/usr/bin:/bin', HOME: '/tmp', TZ: 'UTC' }, stdio: 'ignore', detached: true });
+      '--bind', scratch, '/candidate', '--chdir', '/candidate', '/usr/bin/sh', '-c', 'printf \'SANDBOX_STARTED\\n\'; exec /node build.mjs'],
+    { env: { PATH: '/usr/bin:/bin', HOME: '/tmp', TZ: 'UTC' }, stdio: ['ignore','pipe','ignore'], detached: true });
+    let startupOutput='';
+    child.stdout?.on('data', chunk => { startupOutput=(startupOutput+String(chunk)).slice(-1024); if(startupOutput.includes('SANDBOX_STARTED\n'))sandboxStarted=true; });
     await new Promise<void>((resolve, reject) => {
-      const timer = setTimeout(() => { if (child?.pid) try { process.kill(-child.pid, 'SIGKILL'); } catch {} reject(new Error('isolated build timed out')); }, 10000);
+      const timer = setTimeout(() => { if (child?.pid) try { process.kill(-child.pid, 'SIGKILL'); } catch {} reject(sandboxStarted ? new CandidateExecutionError() : new Error('build isolation unavailable')); }, 10000);
       child!.once('error', e => { clearTimeout(timer); reject(e); });
-      child!.once('exit', code => { clearTimeout(timer); code === 0 ? resolve() : reject(new Error('isolated build failed')); });
+      child!.once('close', code => { clearTimeout(timer); code === 0 ? resolve() : reject(sandboxStarted ? new CandidateExecutionError() : new Error('build isolation unavailable')); });
     });
     // bwrap's PID namespace dies with its init; no candidate process survives to race this read.
     const dist = join(scratch, 'dist');
@@ -93,7 +96,11 @@ export async function createCloudflareSchedulingAdapter(options: CloudflareSched
       const config = ReleaseTargetConfigSchema.parse({ compatibilityDate: src.compatibility_date, compatibilityFlags: [...new Set(flags)],
         vars: { ...vars, ...env.vars, COMMONFORGE_RELEASE_ID: 'scenario-verification' }, kvNamespaces: env.kvNamespaces,
         ...(env.d1Databases?.length ? { d1Databases: env.d1Databases } : {}) });
-      const bytes = await buildIsolated(files);
+      let bytes: Uint8Array;
+      try { bytes = await buildIsolated(files); } catch (error) {
+        if (!(error instanceof CandidateExecutionError)) throw error;
+        return { verifierDigest, runtimeRecipeDigest: cloudflareRuntimeRecipeDigest(options.recipe, options.environment), execution: 'bubblewrap-linux-http' as const, network: 'none' as const, controlPlaneMounted: false as const, results: candidateErrorResults(cases.map(c => c[0])) };
+      }
       const outputFiles = [{ path: 'worker.mjs', sha256: sha256HexSync(bytes), size: bytes.length }];
       const targets = [{ targetId: target.targetId, files: outputFiles, config, digest: releaseTargetDigest(outputFiles, config) }];
       const built: ReleaseBuildReceipt = { jobId: 'scenario-build', releaseId: 'scenario-verification', outputDigest: releaseOutputDigest(targets), targets, builtAt: new Date().toISOString() };

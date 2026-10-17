@@ -5,7 +5,7 @@ import { FakeApi } from '../src/api/fake.js';
 import { AppContext } from '../src/lib/hooks.js';
 import { parseRoute } from '../src/lib/router.js';
 import { KnowledgeEditor } from '../src/screens/ProjectKnowledge.js';
-import { AgentHandoff } from '../src/screens/AgentHandoff.js';
+import { AgentHandoff, nativeAgentPrompt } from '../src/screens/AgentHandoff.js';
 import { canPrepareRecovery, previewMatchesProjectSource, Review } from '../src/screens/NativeReview.js';
 
 const T = '2026-10-17T12:00:00Z';
@@ -28,6 +28,14 @@ describe('project understanding owner views', () => {
     expect(html).toContain('Draft');
     expect(html).toContain('Confirm rule');
     expect(html).toContain('Revision history');
+  });
+  it('distinguishes archived scenarios from current requirements and keeps their history',async()=>{
+    const scenario={...meta,id:'retired',revision:3,predecessor:2,title:'Retired example',given:'Input',when:'Requested',then:'Observed',ruleRefs:[],required:true,method:'manual' as const,verifierDigest:D,confirmation:{actor:'owner',confirmedAt:T,authorityRevision:1,decisionId:'archive'},archived:true};
+    const html=await render(<KnowledgeEditor state={{...state,scenarios:[scenario]}} command={async()=>{}} busy={false}/>);
+    expect(html).toContain('Retired example · revision 3 · Archived');
+    expect(html).toContain('Scenario history');
+    expect(html).not.toContain('>Archive scenario<');
+    expect(html).not.toContain('>Confirm scenario<');
   });
   it('shows stale requirements and missing evidence without a verified claim', async () => {
     const html = await render(<Review state={{ ...state, proposals: [proposal] }} command={async () => {}} busy={false} />);
@@ -67,6 +75,17 @@ describe('project understanding owner views', () => {
     expect(html).toContain('does not restore old knowledge, deploy, or reverse database or external effects');
     expect(html).toContain('Run required automated scenarios');
     expect(html).not.toContain('Knowledge-only proposal');
+  });
+  it('uses a fresh scoped renewal checkout for replacement prompts while initial handoff stays unchanged', () => {
+    const task={taskId:'task-1',title:'Correct rescheduling',request:'Preserve owner correction',write:[],read:[]};
+    const ctx={role:'owner' as const,staging:false,apiUrl:'http://localhost:8787',email:'synthetic@example.test'};
+    const initial=nativeAgentPrompt(task,ctx,'org.project.cfh_oneuse123456','nonce-one');
+    expect(initial).toContain('cforge handoff');expect(initial).toContain('cforge checkout');expect(initial).not.toContain('cforge renew');
+    const lease={holder:'owner',expiresAt:'2050-01-01T00:00:00Z',generation:1};
+    const a=nativeAgentPrompt({...task,lease},ctx,'org.project.cfh_replacement123456','nonce-one');
+    const b=nativeAgentPrompt({...task,lease},ctx,'org.project.cfh_replacement123456','nonce-two');
+    expect(a).toContain('cforge renew --api-url http://localhost:8787 --code org.project.cfh_replacement123456 --out');
+    expect(a).toContain('-renewed-nonce-one');expect(b).toContain('-renewed-nonce-two');expect(a).not.toContain('cforge checkout');expect(a).not.toContain('cforge login');expect(a).toContain('Previous mandate stays revoked');
   });
   it('routes the owner views without changing legacy routes', () => {
     for (const tab of ['outcomes', 'knowledge', 'review']) expect(parseRoute(`/o/org/p/project/${tab}`, '')).toEqual({ name: 'project', org: 'org', pid: 'project', tab });

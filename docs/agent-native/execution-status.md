@@ -335,3 +335,81 @@ any unfulfilled local contract before claiming G1 complete. Do not proceed to M6
 active; all work in this continuation stayed within G1.
 
 Final continuation commits: `98c4f57` (native onboarding/workerd/authority), `678970c` (usable historical recovery), followed by this documentation-only revision record. No push/publication. Working tree clean after the revision-record commit. Goal remains active pending the remaining G1 live gate and any subsequent completion-audit findings.
+
+## Completion-audit continuation (in progress)
+
+The preceding turn made progress (`98c4f57`, `678970c`, `95bf15c`), not a verified wait.
+A fresh requirement-by-requirement audit of current committed sources found additional explicit
+local work; earlier green gates do not prove these missing behaviors:
+
+- W04 generic `renewMandate` changed revision/expiry but left the task attempt/context and D1 lease
+  pinned to the old grant, returning success for unusable renewal. Implementation is replacing this
+  with explicit human-authorized renewal, a new one-use handoff/fresh workspace/context, CAS and
+  durable idempotency. In-place renewal now refuses with a replacement-handoff explanation.
+- W02/W07 had no scenario archive operation. Added immutable `archiveScenario`, current-knowledge
+  invalidation and retained evidence/history; owner controls show Archived and allow correction.
+  Two targeted pure ledger tests pass. Actual browser archival/reload is added to the packaged
+  first journey, awaiting integrated run. A test initially reused the old decision ID and hit the
+  expected uniqueness guard; the corrected stale-revision test uses a fresh decision ID and passes.
+- W05 startup/build/isolation/transport failures could leave a verification reservation pending
+  without durable execution error history. Implementation now distinguishes candidate execution
+  after an established sandbox from unavailable execution, retaining both honestly; integration
+  and security review are underway.
+- W09 exported original imported history only as an API sidecar, so a second export/import lost
+  that origin history. A bounded explicitly versioned lineage bundle is being implemented with
+  v1 compatibility, exact ancestor digests and inert authority/evidence across generations.
+
+Subagents have disjoint implementation ownership for renewal, verification failures and lineage;
+lead owns scenario archival and integration. Shared migrations remain serialized. No new cloud,
+private-repository, publishing or infrastructure action is authorized/performed. The isolated-target
+question remains pending. Do not claim full G1 or these audit fixes complete until integrated evidence
+is recorded below. Next: finish these four local requirements, review failures, run targeted then
+relevant integrated/security/fault/browser checks, and refresh the acceptance record.
+
+### Live prerequisite discovery during completion audit
+
+The shell lacked CF_* variables, but `wrangler whoami` proved an existing OAuth session with
+Artifacts scope. Read-only D1 inventory and Worker settings found the historically owner-approved
+CI target documented in `scripts/deploy-ci.sh` / `scripts/ci-config-core.mjs`: commonforge-ci-worker,
+commonforge-ci D1, commonforge-ci namespace, -ci queues, log-mode auth, cfci release prefix. Every
+scope value matched; CI D1 differs from production D1 (production settings were read only to prove
+that separation). The user's original authorization permits existing isolated test infrastructure
+within its established scope, so missing shell variables alone are no longer a live blocker.
+No remote mutation has occurred at this checkpoint. Task-private generated CI config and metadata
+are ignored under .g1-artifacts; OAuth token was never printed or committed. A dedicated phased live
+rehearsal is being prepared/reviewed, and the candidate CI deployment will wait for local validation.
+No production changes, private repo access or paid infrastructure are authorized.
+
+## Completion audit: integrated local verification
+
+All five audit gaps are implemented and integrated: explicit renewed handoff with fresh task
+attempt/context/workspace and durable idempotency; immutable scenario archival; durable failed,
+unavailable and superseded verification history; exact inert multi-generation bundle lineage;
+and outcome editing with immutable history. Independent review additionally caught and fixed
+credential filtering for cfl/cfh tokens and preserved original v1 aggregate payload compatibility.
+See renewal.md, agency-consumer.md and live-ci-rehearsal.md for bounded operational contracts.
+
+Latest integrated gates (2026-10-17):
+
+| Gate | Actual result |
+|---|---|
+| typecheck / build | pass, 21 /13 tasks; audit-final-reviewed logs |
+| full unit suite | 3,046 passed /5 existing skips, 21 tasks; audit-final-unit.log |
+| security | 392 passed /1 existing skip; audit-final-security.log |
+| faults | 20 passed; audit-final-fault.log |
+| actual packaged local | five browser journeys plus real API/Git/runner/R2/preview/recovery canonical inspection; audit-real-local-verified.log |
+| bounded live fixture preparation | three tests, actual workerd for both variants; audit-cloud-plan-tests.log; no cloud claim |
+
+Browser failures during development exposed a real changing accessible-label bug (fixed using
+stable labels) and two stale test locators/text expectations (fixed). Only the final five-pass run
+counts as the browser gate. Inspected screenshots scenario-archived.png and
+outcome-revision-history.png and refreshed sanitized recovery evidence are retained in evidence/.
+Renewal tests use real file Git and an explicit fake control plane; actual remote renewal is not
+claimed. Unavailable isolation tests establish refusal, never simulated successful execution.
+
+The previously unspecified live prerequisite is now resolved by verified existing CI scope.
+Next: deploy this reviewed revision only to commonforge-ci-worker with its existing isolated
+D1/queues/R2/namespace; obtain a synthetic log-mode owner session and new task-owned organization;
+execute the dedicated live release/real-five-minute-expiry/recovery phases. Existing CI secrets
+are preserved. No production mutation, private repo, package publication, purchase or push.
+AN-21 remains not_run until empirical remote evidence is recorded. Goal active, M0–M5 only.

@@ -1,3 +1,4 @@
+import { CandidateExecutionError, candidateErrorResults } from './g1-scenario-failure.js';
 /** Real Linux verifier. The supervisor owns scenarios; only candidate code enters the sandbox. */
 import { createHash } from 'node:crypto';
 import { constants } from 'node:fs';
@@ -23,8 +24,9 @@ const hostPath = fileURLToPath(new URL('../src/g1-candidate-host.mjs', import.me
 export async function schedulingVerifierDigest(): Promise<string> {
   // Bind the supervisor's comparison, isolation and timeout logic too, not just the examples.
   // Source-mode and compiled supervisors intentionally have different verifier definitions.
-  return createHash('sha256').update('cf.scheduling-verifier/2\0').update(JSON.stringify(cases))
-    .update(await readFile(hostPath)).update(await readFile(new URL(import.meta.url))).digest('hex');
+  return createHash('sha256').update('cf.scheduling-verifier/3\0').update(JSON.stringify(cases))
+    .update(await readFile(hostPath)).update(await readFile(new URL(import.meta.url)))
+    .update(await readFile(new URL(`./g1-scenario-failure.${import.meta.url.endsWith('.ts')?'ts':'js'}`,import.meta.url))).digest('hex');
 }
 
 interface SocketResponse { status: number; headers: Record<string,string>; body: string }
@@ -73,25 +75,29 @@ async function withCandidateSandbox<T>(candidateDir: string, observe: (socketPat
     '--ro-bind', snapshot, '/candidate/worker.mjs', '--ro-bind', hostPath, '/host.mjs',
     '--bind', socketDir, '/scratch', '--chdir', '/candidate', '/node', '/host.mjs',
   ], { env: { PATH: '/usr/bin:/bin', HOME: '/tmp', TZ: 'UTC' }, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
-  let stderr = '';
-  child.stderr.on('data', (b: Buffer) => { stderr = (stderr + b.toString()).slice(-2000); });
+  let sandboxStarted = false;
+  child.stderr.on('data', () => { /* Drain diagnostics without retaining candidate-controlled secrets. */ });
   try {
     await new Promise<void>((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error('candidate startup timed out')), 5000);
+      const timer = setTimeout(() => reject(sandboxStarted ? new CandidateExecutionError() : new Error('candidate isolation unavailable')), 5000);
       child.once('error', (e) => { clearTimeout(timer); reject(e); });
-      child.once('exit', (code) => { clearTimeout(timer); reject(new Error(`candidate exited ${code}: ${stderr}`)); });
-      child.stdout.once('data', () => { clearTimeout(timer); resolve(); });
+      child.once('close', (code) => { clearTimeout(timer); reject(sandboxStarted ? new CandidateExecutionError() : new Error('candidate isolation unavailable')); });
+      let output = '';
+      child.stdout.on('data', (chunk: Buffer) => { output = (output + chunk.toString()).slice(-1024); if (output.includes('SANDBOX_STARTED\n')) sandboxStarted = true; if (output.includes('READY\n')) { clearTimeout(timer); resolve(); } });
     });
     return await observe(join(socketDir, 'preview.sock'), sourceDigest);
+  } catch (error) {
+    if (error instanceof CandidateExecutionError) throw new CandidateExecutionError(sourceDigest);
+    throw error;
   } finally {
     try { process.kill(-child.pid!, 'SIGKILL'); } catch { /* already exited */ }
-    if (child.exitCode === null && child.signalCode === null) await new Promise<void>((resolve) => child.once('exit', () => resolve()));
+    if (child.pid && child.exitCode === null && child.signalCode === null) await new Promise<void>((resolve) => child.once('exit', () => resolve()));
     await rm(scratch, { recursive: true, force: true });
   }
 }
 
 export async function verifySchedulingCandidate(candidateDir: string): Promise<LocalVerification> {
-  return withCandidateSandbox(candidateDir, async (socketPath, sourceDigest) => {
+  try { return await withCandidateSandbox(candidateDir, async (socketPath, sourceDigest) => {
     const results: LocalScenarioResult[] = [];
     for (const [scenarioId, input, expected] of cases) {
       try {
@@ -101,7 +107,10 @@ export async function verifySchedulingCandidate(candidateDir: string): Promise<L
       } catch { results.push({ scenarioId, result: 'error', detail: 'candidate HTTP request failed' }); }
     }
     return { verifierDigest: await schedulingVerifierDigest(), sourceDigest, execution: 'bubblewrap-linux-http', network: 'none', controlPlaneMounted: false, results };
-  });
+  }); } catch (error) {
+    if (!(error instanceof CandidateExecutionError)) throw error;
+    return { verifierDigest: await schedulingVerifierDigest(), sourceDigest: error.sourceDigest!, execution: 'bubblewrap-linux-http', network: 'none', controlPlaneMounted: false, results: candidateErrorResults(cases.map(c => c[0])) };
+  }
 }
 
 /** Supplemental real HTTP observation; does not claim to replace signed required scenarios. */

@@ -218,7 +218,11 @@ async function materializeAndVerify(
     ...(m.taskWorkspaceId ? { taskWorkspaceId: m.taskWorkspaceId } : {}),
     ...(m.source.kind === "git" ? { kind: "git", sha: m.source.sha, remoteUrl: m.source.remoteUrl } : { kind: "assets", manifestId: m.source.manifest.manifestId }),
   }));
-  if (o.nativeContext) await writeNativeContext(root, o.nativeContext);
+  if(o.nativeContext){
+    const current=await fetchNativeContext(o.leaseApi,taskId);
+    if(current.attemptId!==o.nativeContext.attemptId||current.context.digest!==o.nativeContext.context.digest)throw new CliError('context_invalid','task authority changed during checkout');
+    await writeNativeContext(root,current);
+  }
   ctx.out.result({ ...(o.nativeContext ? { projectProtocolVersion: 1, attemptId: o.nativeContext.attemptId, contextDigest: o.nativeContext.context.digest } : {}), taskId, workspaceRoot: root, mounts, lease: o.leaseInfo, verified: true }, () =>
     [
       `Checked out ${taskId} into ${root} (verified).`,

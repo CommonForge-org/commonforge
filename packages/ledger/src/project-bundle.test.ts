@@ -1,7 +1,7 @@
 import { describe,expect,it } from 'vitest';
 import { computeKnowledgeHead, computeProjectProposalHash, createProjectState, currentConfirmed, hashCanonicalSync, sha256HexSync, type ProjectState } from '@commonforge-org/core';
 import { applyProjectCommand, createNativeGenesis } from './project.js';
-import { exportProjectBundle,importProjectBundle,projectRetentionRoots,validateProjectBundle,type ProjectBundle,type ProjectBundlePayload } from './project-bundle.js';
+import { exportProjectBundle,importProjectBundle,projectRetentionRoots,validateProjectBundle,PROJECT_BUNDLE_LIMITS,type ProjectBundle,type ProjectBundlePayload } from './project-bundle.js';
 const now='2026-10-17T12:00:00.000Z';
 const actor={actorId:'owner',now};
 const base={schemaVersion:1 as const,organizationId:'synthetic-org',projectId:'synthetic-project',author:'owner',createdAt:now};
@@ -45,6 +45,54 @@ describe('G1 project portability and consumer boundary',()=>{
  });
  it.each(['password=secretvalue','Bearer abcdefghijklmnopqrstuvwxyz','file:///home/example/repository','https://user:secret@example.test/repo'])('refuses credential/local-coordinate prose and bytes: %s',text=>{
  const s=fixture();s.knowledge[0]!.text=text;s.knowledgeHead=computeKnowledgeHead(s.organizationId,s.projectId,s.knowledgeGeneration,s.knowledge,s.scenarios);expect(()=>exportProjectBundle(s)).toThrow();expect(()=>exportProjectBundle(fixture(),[payload(text,'source','git-ref-opaque')])).toThrow();
+ });
+ it.each(['cfl_0123456789abcdef0123456789abcdef','cfh_0123456789abcdef0123456789abcdef'])('refuses raw task credentials in payloads and inert lineage: %s',token=>{
+ const a=exportProjectBundle(fixture());
+ expect(()=>exportProjectBundle(fixture(),[payload('task token '+token,'log','raw-agent-token')])).toThrow(/credential-like/);
+ const b=exportProjectBundle(fixture(),[],[a]);if(b.schemaVersion!==2)throw Error('version');
+ const ancestor=b.lineage[0]!;ancestor.payloads.push(payload('handoff token '+token,'log','raw-agent-token'));b.lineage[0]=rehash(ancestor);
+ expect(()=>validateProjectBundle(rehash(b))).toThrow(/credential-like/);
+ });
+ it('keeps v1 aggregate payload compatibility while v2 uses its explicit cumulative limit',()=>{
+ const logs=[payload('x'.repeat(4_200_000),'log','old-v1-a'),payload('y'.repeat(4_200_000),'log','old-v1-b')];
+ const old=exportProjectBundle(fixture(),logs,[],1);expect(old.schemaVersion).toBe(1);expect(validateProjectBundle(JSON.parse(JSON.stringify(old))).digest).toBe(old.digest);
+ expect(()=>exportProjectBundle(fixture(),logs,[],2)).toThrow(/total payload limit/);
+ });
+ it('preserves two generations of exact inert archives and retained payloads',()=>{
+ const a=exportProjectBundle(fixture(),[payload('synthetic retained observation','attachment')]);
+ const importedB=importProjectBundle(a,{organizationId:'org-b',projectId:'project-b',ownerId:'owner-b',now});
+ const b=exportProjectBundle(importedB.state,[],[importedB.history]);
+ expect(b.schemaVersion).toBe(2);if(b.schemaVersion!==2)throw Error('version');expect(b.lineage[0]).toEqual(a);
+ const importedC=importProjectBundle(JSON.parse(JSON.stringify(b)),{organizationId:'org-c',projectId:'project-c',ownerId:'owner-c',now});
+ const c=exportProjectBundle(importedC.state,[],[importedC.history]);if(c.schemaVersion!==2)throw Error('version');
+ const archivedB=c.lineage[0]!;if(archivedB.schemaVersion!==2)throw Error('version');
+ expect(archivedB.digest).toBe(b.digest);expect(archivedB.lineage[0]).toEqual(a);
+ expect(archivedB.lineage[0]!.payloads[0]!.contentBase64).toBe(btoa('synthetic retained observation'));
+ expect(importedC.state.authorities).toEqual([{principalId:'owner-c',role:'owner',revision:1,active:true}]);
+ expect(importedC.state.evidence).toEqual([]);expect(importedC.state.decisions).toEqual([]);expect(importedC.state.mandates).toEqual([]);expect(importedC.state.sourceHeads).toEqual([]);
+ expect(currentConfirmed(importedC.state.knowledge)).toEqual([]);
+ expect(()=>exportProjectBundle(importedB.state,[],[a],1)).toThrow(/version 1 cannot preserve/);
+ });
+ it('rejects tampered ancestors even when the outer bundle is rehashed',()=>{
+ const a=exportProjectBundle(fixture(),[payload('synthetic retained observation','attachment')]);
+ const b=exportProjectBundle(importProjectBundle(a,{organizationId:'b',projectId:'b',ownerId:'owner',now}).state,[],[a]);
+ if(b.schemaVersion!==2)throw Error('version');b.lineage[0]!.payloads[0]!.contentBase64=btoa('corrupt');
+ expect(()=>validateProjectBundle(rehash(b))).toThrow(/digest/);
+ });
+ it('bounds recursive archives before parsing and enforces cumulative payload limits',()=>{
+ const a=exportProjectBundle(fixture());let raw:unknown=a;
+ for(let i=0;i<PROJECT_BUNDLE_LIMITS.maxLineageDepth+1;i++)raw={...a,domain:'cf.project-bundle/2',schemaVersion:2,lineage:[raw]};
+ expect(()=>validateProjectBundle(raw)).toThrow(/depth limit/);
+ const cyclic:any={...a,domain:'cf.project-bundle/2',schemaVersion:2,lineage:[]};cyclic.lineage.push(cyclic);
+ expect(()=>validateProjectBundle(cyclic)).toThrow(/cyclic/);
+ expect(()=>validateProjectBundle({...a,domain:'cf.project-bundle/2',schemaVersion:2,lineage:Array.from({length:33},()=>structuredClone(a))})).toThrow(/archive limit/);
+ const b=exportProjectBundle(fixture(),[],[a]);if(b.schemaVersion!==2)throw Error('version');b.lineage.push(structuredClone(a));
+ expect(()=>validateProjectBundle(rehash(b))).toThrow(/duplicate lineage archive digest/);
+ const logs=Array.from({length:501},(_,i)=>payload('bounded log '+i,'log','log-'+i));
+ const ancestor=exportProjectBundle(fixture(),logs);
+ expect(()=>exportProjectBundle(fixture(),logs,[ancestor])).toThrow(/total payload limit/);
+ const large=exportProjectBundle(fixture(),[payload('x'.repeat(4_200_000),'log','large-ancestor')]);
+ expect(()=>exportProjectBundle(fixture(),[payload('y'.repeat(4_200_000),'log','large-local')],[large])).toThrow(/total payload limit/);
  });
  it('retains historical acceptance references and pending attempt payloads conservatively',()=>{
  const s=fixture();const roots=projectRetentionRoots(s);expect(roots.sourceRevisions).toContain('git-ref-opaque');expect(roots.manifestHashes).toHaveLength(2);expect(roots.evidenceIds).toContain('evidence');expect(roots.attachmentDigests).toContain(s.evidence[0]!.attachments[0]!.digest);expect(roots.buildDigests).toContain(s.proposals[0]!.envelope.buildDigest);expect(roots.canDeleteReferencedPayloads).toBe(false);

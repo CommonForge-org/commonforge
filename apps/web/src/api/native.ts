@@ -33,3 +33,13 @@ export async function nativeCommand(org: string, pid: string, generation: number
   }
   await request(org, pid, '/commands', { ...body, expectedGeneration: generation, idempotencyKey: crypto.randomUUID() });
 }
+
+export interface NativeVerificationJob {
+  runId:string; envelopeDigest:string; issuedAt:string; completedAt:string|null;
+  status:'pending'|'expired'|'completed'|'error'|'stale'; execution:string;
+  failure:{code:string;summary:string}|null; evidenceIds:string[];
+}
+export async function loadNativeVerifications(org:string,pid:string,proposalId:string):Promise<NativeVerificationJob[]> {
+  const data=await request(org,pid,`/proposals/${encodeURIComponent(proposalId)}/verifications?limit=100`);
+  return data.items as NativeVerificationJob[];
+}

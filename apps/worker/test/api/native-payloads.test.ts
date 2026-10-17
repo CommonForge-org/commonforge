@@ -20,6 +20,14 @@ describe('native evidence payload retention',()=>{
  const repeat=await s.h.api('PUT',path,{token:s.o.token,raw:content,headers:{'content-type':'text/plain'}});expect(repeat.status).toBe(200);expect(repeat.body.replayed).toBe(true);
  const get=await s.h.api('GET',path,{token:s.o.token});expect(get.status).toBe(200);expect(get.body).toBe('Synthetic retained observation');expect(get.headers.get('x-commonforge-sha256')).toBe(digest);
  const p=await manualProposal(s);await p.command('recordEvidence',{record:p.evidence});const state=p.getState();const payloads=await exportNativePayloads(s.h.services(),s.o.orgId,s.pid,state);const bundle=exportProjectBundle(state,payloads);expect(bundle.completeness.missingAttachments).toEqual([]);expect(bundle.payloads[0]?.digest).toBe(digest);
+ const exported=await s.h.api('GET',s.path+'/bundle?includePayloads=1',{token:s.o.token});expect(exported.status).toBe(200);const original=exported.body.bundle;
+ let current=original;
+ for(const generation of ['b','c']){
+  const imported=await s.h.api('POST',`/api/orgs/${s.o.orgId}/native/import`,{token:s.o.token,body:{name:'Portable evidence '+generation,idempotencyKey:'evidence-import-'+generation,bundle:current}});expect(imported.status,JSON.stringify(imported.body)).toBe(201);expect(imported.body.state.evidence).toEqual([]);
+  const next=await s.h.api('GET',`/api/orgs/${s.o.orgId}/projects/${imported.body.projectId}/native/bundle`,{token:s.o.token});expect(next.status).toBe(200);expect(next.body.bundle.lineage[0]).toEqual(current);current=next.body.bundle;
+ }
+ expect(current.lineage[0].lineage[0]).toEqual(original);expect(current.lineage[0].lineage[0].payloads[0].contentBase64).toBe(btoa('Synthetic retained observation'));expect(current.lineage[0].lineage[0].completeness.missingAttachments).toEqual([]);
+
  });
  it('rejects missing attachments at evidence transaction and refuses deletion once referenced',async()=>{
  const s=await setup();const p=await manualProposal(s);const record=await s.h.api('POST',s.path+'/commands',{token:s.o.token,body:{type:'recordEvidence',record:p.evidence,expectedGeneration:p.getState().generation,idempotencyKey:'missing'}});expect(record.status).toBe(409);expect(record.body.error.code).toBe('scenario_evidence_invalid');

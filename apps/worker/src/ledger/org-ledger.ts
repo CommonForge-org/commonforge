@@ -388,11 +388,29 @@ export class OrgLedger extends DurableObject<Env> {
     }));
   }
 
-  async issueNativeHandoff(organizationId:string,projectId:string,actorId:string,taskId:string,agentId:string,resourceIds:string[],codeHash:string):Promise<string> {
+  async issueNativeHandoff(organizationId:string,projectId:string,actorId:string,taskId:string,agentId:string,resourceIds:string[],codeHash:string,renewal?:{mandateId:string;revision:number;expectedGeneration:number;idempotencyKey:string}):Promise<string> {
     return this.#rpc(() => this.#recordTx(organizationId,tx => {
       const stored=tx.getNativeProjectJson(projectId);
       if(!stored) throw new ProjectError('project_not_found','project is not enabled');
       const s=ProjectStateSchema.parse(JSON.parse(stored)); const now=this.#now();
+      const renewalKey=renewal?`native-renewal:${actorId}:${renewal.idempotencyKey}`:null;
+      const requestDigest=renewal?hashCanonicalSync({domain:'cf.native-renewal/1',organizationId,projectId,actorId,taskId,agentId,resourceIds:[...resourceIds].sort(),codeHash,...renewal}):null;
+      if(renewal){
+        const actor=s.authorities.find(a=>a.principalId===actorId&&a.active&&a.role!=='agent');
+        if(!actor)throw new ProjectError('authority_denied','active human project authority required');
+        const replay=s.idempotency.find(i=>i.key===renewalKey);
+        if(replay){
+          if(replay.requestDigest!==requestDigest)throw new ProjectError('idempotency_conflict','renewal key already used for another request');
+          const raw=tx.getNativeHandoff(codeHash);const issued=raw?JSON.parse(raw) as {mandateId:string;consumed:boolean;expiresAt:number}:null;
+          const latest=issued?s.mandates.filter(m=>m.id===issued.mandateId).at(-1):null;
+          if(!issued||issued.consumed||issued.expiresAt<=Date.parse(now))throw new ProjectError('revision_conflict','replacement handoff consumed or expired; use the issued lease or request a new replacement');
+          if(!latest||latest.revokedAt)throw new ProjectError('mandate_revoked','replacement authority is no longer active');
+          return canonicalJson({mandateId:issued.mandateId,expiresAt:issued.expiresAt,replacesMandateId:renewal.mandateId,replayed:true});
+        }
+        if(s.generation!==renewal.expectedGeneration)throw new ProjectError('revision_conflict','project generation changed');
+        const prior=s.mandates.filter(m=>m.id===renewal.mandateId).at(-1);
+        if(!prior||prior.taskId!==taskId||prior.revision!==renewal.revision||prior.revokedAt)throw new ProjectError('revision_conflict','renewal must name the current unrevoked task mandate');
+      }
       // Issuing a replacement handoff ends authority of previous attempts for this task.
       for(const old of new Map(s.mandates.map(m=>[m.id,m])).values()) if(old.taskId===taskId&&!old.revokedAt){s.mandates.push({...old,revision:old.revision+1,createdAt:now,revokedAt:now,revocationGeneration:old.revocationGeneration+1});s.attempts=s.attempts.map(a=>a.mandateId===old.id?{...a,status:'revoked' as const,endedAt:now}:a);}
       if(!s.authorities.some(a=>a.principalId===agentId)) s.authorities.push({principalId:agentId,role:'agent',revision:1,active:true});
@@ -400,9 +418,10 @@ export class OrgLedger extends DurableObject<Env> {
       const mandateId=`mandate:${codeHash}`;
       const result=applyProjectCommand(s,{type:'issueMandate',expectedGeneration:s.generation,idempotencyKey:`handoff:${codeHash}`,record:{schemaVersion:1,organizationId,projectId,id:mandateId,author:actorId,createdAt:now,revision:1,taskId,agentId,issuer:actorId,operations:['context:read','source:checkout','candidate:submit','knowledge:propose','attempt:read'],resourceIds,issuedAt:now,expiresAt:new Date(Date.parse(now)+3600000).toISOString(),revocationGeneration:0,revokedAt:null,maxAttempts:1,maxJobs:10,timeoutSeconds:120}}, {actorId,now});
       const record={codeHash,projectId,taskId,issuer:actorId,agentId,mandateId,expiresAt:Date.parse(now)+900000,consumed:false,packet:null,attemptId:null};
+      if(renewal)result.state.idempotency.push({key:renewalKey!,requestDigest:requestDigest!,resultGeneration:result.state.generation,resultId:mandateId});
       tx.putNativeHandoff(codeHash,null,projectId,canonicalJson(record));
-      tx.putNativeProjectJson(projectId,organizationId,result.state.generation,canonicalJson(result.state));
-      return canonicalJson({mandateId,expiresAt:record.expiresAt});
+      tx.putNativeProjectJson(projectId,organizationId,result.state.generation,canonicalJson(ProjectStateSchema.parse(result.state)));
+      return canonicalJson({mandateId,expiresAt:record.expiresAt,...(renewal?{replacesMandateId:renewal.mandateId,replayed:false}:{})});
     }));
   }
 
@@ -455,6 +474,8 @@ export class OrgLedger extends DurableObject<Env> {
       const s=ProjectStateSchema.parse(JSON.parse(value));
       if(!s.authorities.some(a=>a.principalId===actorId&&a.active&&a.role!=='agent'))throw new ProjectError('authority_denied','human authority required');
       const p=s.proposals.find(p=>p.digest===request.envelopeDigest);
+      const terminal=tx.nativeJob(projectId,key);
+      if(p&&request.organizationId===organizationId&&request.projectId===projectId&&terminal?.result){const old=ScenarioVerificationRequestSchema.parse(JSON.parse(terminal.request));if(old.envelopeDigest!==request.envelopeDigest)throw new ProjectError('idempotency_conflict','verification key already used');return canonicalJson(terminal);}
       if(!p || request.organizationId!==organizationId || request.projectId!==projectId || p.envelope.expectedKnowledgeHead!==s.knowledgeHead || p.envelope.expectedParent!==s.manifests.at(-1)?.hash || p.envelope.policyRevision!==s.policyRevision)throw new ProjectError('knowledge_stale','proposal requirements changed');
       if(p.envelope.recovery){
         validateProjectRecovery(s,p.envelope);
@@ -476,6 +497,35 @@ export class OrgLedger extends DurableObject<Env> {
     }));
   }
 
+  /** Authenticated dispatch failed before trusted execution could be established. No scenario
+   * evidence is fabricated; persist a terminal record so retry/history stays inspectable. */
+  async failNativeVerification(organizationId:string,projectId:string,actorId:string,key:string,code:'transport_unavailable'|'result_invalid'):Promise<string> {
+    return this.#rpc(()=>this.#recordTx(organizationId,tx=>{
+      z.enum(['transport_unavailable','result_invalid']).parse(code);
+      const job=tx.nativeJob(projectId,key),value=tx.getNativeProjectJson(projectId);
+      if(!job||!value)throw new ProjectError('scenario_evidence_invalid','verification job unavailable');
+      const state=ProjectStateSchema.parse(JSON.parse(value));
+      if(!state.authorities.some(a=>a.principalId===actorId&&a.active&&a.role!=='agent'))throw new ProjectError('authority_denied','human authority required');
+      if(job.result)return job.result;
+      const request=ScenarioVerificationRequestSchema.parse(JSON.parse(job.request));
+      const output=canonicalJson({runId:request.runId,state,evidence:[],status:'error',execution:'not-established',completedAt:this.#now(),failure:{code,summary:code==='result_invalid'?'Verifier result could not be authenticated or matched to this request.':'Verifier transport, source preparation, or isolation was unavailable; candidate execution was not established.'}});
+      tx.putNativeJob(projectId,key,job.request,output);return output;
+    }));
+  }
+
+  async listNativeVerifications(organizationId:string,projectId:string,actorId:string,digests:string[],cursor=0,limit=50):Promise<string> {
+    return this.#rpc(()=>this.#recordTx(organizationId,tx=>{
+      z.array(z.string().regex(/^[a-f0-9]{64}$/)).max(100).parse(digests);z.number().int().nonnegative().parse(cursor);z.number().int().min(1).max(100).parse(limit);
+      const value=tx.getNativeProjectJson(projectId);if(!value)throw new ProjectError('project_not_found','project unavailable');
+      const s=ProjectStateSchema.parse(JSON.parse(value)),auth=s.authorities.find(a=>a.principalId===actorId&&a.active);
+      if(!auth || digests.some(d=>!s.proposals.some(p=>p.digest===d&&(auth.role!=='agent'||s.attempts.some(a=>a.id===p.envelope.attemptId&&a.agentId===actorId)))))throw new ProjectError('authority_denied','verification history unavailable');
+      const rows=tx.nativeJobs(projectId,digests,cursor,limit+1),items=rows.slice(0,limit).map(job=>{
+        const request=ScenarioVerificationRequestSchema.parse(JSON.parse(job.request)),result=job.result?JSON.parse(job.result):null;
+        return {runId:request.runId,envelopeDigest:request.envelopeDigest,issuedAt:request.issuedAt,completedAt:result?.completedAt??result?.evidence?.[0]?.completedAt??null,status:result?(result.status??(result.failure?'error':'completed')):(Date.parse(request.expiresAt)<=Date.parse(this.#now())?'expired':'pending'),execution:result?.execution??'not-established',failure:result?.failure??null,evidenceIds:(result?.evidence??[]).map((e:{id:string})=>e.id)};
+      });return canonicalJson({items,nextCursor:rows.length>limit?cursor+limit:null});
+    }));
+  }
+
   /** Result signature/set was checked by trusted HTTP service. Ingest all scenario records atomically. */
   async completeNativeVerification(organizationId:string,projectId:string,actorId:string,key:string,raw:unknown):Promise<string> {
     return this.#rpc(() => this.#recordTx(organizationId,tx => {
@@ -486,7 +536,11 @@ export class OrgLedger extends DurableObject<Env> {
       const value=tx.getNativeProjectJson(projectId);if(!value)throw new ProjectError('project_not_found','project unavailable');
       let state=ProjectStateSchema.parse(JSON.parse(value));
       const proposal=state.proposals.find(p=>p.digest===request.envelopeDigest);
-      if(!proposal||proposal.envelope.expectedKnowledgeHead!==state.knowledgeHead)throw new ProjectError('knowledge_stale','requirements changed during verification');
+      if(!state.authorities.some(a=>a.principalId===actorId&&a.active&&a.role!=='agent'))throw new ProjectError('authority_denied','human authority required');
+      if(!proposal||proposal.envelope.expectedKnowledgeHead!==state.knowledgeHead||proposal.envelope.expectedParent!==state.manifests.at(-1)?.hash||proposal.envelope.policyRevision!==state.policyRevision){
+        const output=canonicalJson({runId:result.runId,state,evidence:result.evidence,status:'stale',execution:result.execution,completedAt:result.completedAt,failure:{code:'requirements_changed',summary:'This run completed against earlier project requirements or source. Its observations are historical and cannot authorize acceptance.'}});
+        tx.putNativeJob(projectId,key,job.request,output);return output;
+      }
       for(const record of result.evidence){
         this.#checkNativeEvidencePayloads(tx,projectId,record);
         const previous=state.evidence.filter(e=>e.envelopeDigest===record.envelopeDigest&&e.scenarioId===record.scenarioId).at(-1);

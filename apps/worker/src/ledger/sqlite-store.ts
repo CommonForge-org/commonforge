@@ -215,6 +215,10 @@ export class SqliteLedgerTx implements LedgerTx {
     const r=this.rows('SELECT request_json,result_json FROM native_jobs WHERE project_id=? AND idempotency_key=?',projectId,key)[0];
     return r?{request:str(r.request_json),result:r.result_json===null?null:str(r.result_json)}:null;
   }
+  nativeJobs(projectId:string,digests:string[],cursor:number,limit:number):{request:string;result:string|null}[] {
+    if(!digests.length)return [];
+    return this.rows(`SELECT request_json,result_json FROM native_jobs WHERE project_id=? AND json_extract(request_json,'$.envelopeDigest') IN (${digests.map(()=>'?').join(',')}) ORDER BY json_extract(request_json,'$.issuedAt') DESC,idempotency_key LIMIT ? OFFSET ?`,projectId,...digests,limit,cursor).map(r=>({request:str(r.request_json),result:r.result_json===null?null:str(r.result_json)}));
+  }
   nativeJobCount(projectId:string,envelopeDigest:string):number {
     return num(this.rows("SELECT count(*) AS n FROM native_jobs WHERE project_id=? AND json_extract(request_json,'$.envelopeDigest')=?",projectId,envelopeDigest)[0]!.n);
   }

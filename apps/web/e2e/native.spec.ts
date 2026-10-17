@@ -70,6 +70,12 @@ test('owner preserves a correction and sees honest outcomes and review gaps usin
   await page.getByRole('button', { name: 'Confirm scenario' }).click();
   await expect(page.getByRole('heading', { name: 'Manager override retains its reason · revision 2 · Confirmed' })).toBeVisible();
   await page.screenshot({ path: info.outputPath('knowledge-confirmed-correction.png'), fullPage: true });
+  await page.getByRole('button',{name:'Archive scenario',exact:true}).click();
+  await expect(page.getByRole('heading',{name:'Manager override retains its reason · revision 3 · Archived'})).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('heading',{name:'Manager override retains its reason · revision 3 · Archived'})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Archive scenario',exact:true})).toHaveCount(0);
+  await page.screenshot({path:info.outputPath('scenario-archived.png'),fullPage:true});
   await page.goto(root + '/outcomes');
   await page.getByLabel('Desired improvement').fill('A fresh agent preserves the manager exception');
   await page.getByLabel('Success criteria (one per line)').fill('The manager reason remains mandatory\nUnauthorized overrides remain denied');
@@ -79,7 +85,7 @@ test('owner preserves a correction and sees honest outcomes and review gaps usin
   await page.goto(root + '/review');
   await expect(page.getByText('No proposals submitted.', { exact: false })).toBeVisible();
   await expect(page.getByText('Health unknown.', { exact: false })).toBeVisible();
-  await expect(page.getByText('Requirements recorded; implementation verification outstanding')).toHaveCount(3);
+  await expect(page.getByText('Requirements recorded; implementation verification outstanding')).toHaveCount(4);
   await page.screenshot({ path: info.outputPath('review-outstanding-unknown.png'), fullPage: true });
   await info.attach('real-api-journey', { contentType: 'application/json', body: JSON.stringify({ execution: 'real-browser-real-worker-api', orgId: org.orgId, projectId: project.projectId, correction, screenshots: ['knowledge-confirmed-correction.png', 'outcome-open.png', 'review-outstanding-unknown.png'], limitations: 'No source proposal or release is claimed by this UI correction test.' }) });
 });
@@ -92,7 +98,7 @@ test('owner reviews real runner evidence and accepts the exact source proposal',
   const proposal = page.locator(`article[data-proposal-id="${report.proposalId}"]`);
   await expect(proposal).toBeVisible();
   await expect(proposal.getByText('Verified runner execution', { exact: false })).toHaveCount(report.scenarioCount);
-  await expect(proposal.getByText('pass · Verified runner execution', { exact: false })).toHaveCount(report.scenarioCount);
+  await expect(proposal.getByText('pass (current result) · Verified runner execution', { exact: false })).toHaveCount(report.scenarioCount);
   if (process.env.COMMONFORGE_NATIVE_REQUIRE_PREVIEW === '1') {
     await proposal.getByRole('button', { name: 'Create exact-source preview' }).click();
     const link = proposal.getByRole('link', { name: 'Open reviewed preview' }).first();
@@ -168,7 +174,7 @@ test('owner verifies and accepts historical source recovery under current requir
   await expect(recovery).toBeVisible();
   await expect(recovery.getByText('Restores exact historical source under current requirements',{exact:false})).toBeVisible();
   await recovery.getByRole('button',{name:'Run required automated scenarios',exact:true}).click();
-  await expect(recovery.getByText('pass · Verified runner execution',{exact:false})).toHaveCount(report.scenarioCount,{timeout:120000});
+  await expect(recovery.getByText('pass (current result) · Verified runner execution',{exact:false})).toHaveCount(report.scenarioCount,{timeout:120000});
   await recovery.getByLabel('Review explanation').fill('Reviewed exact historical source with fresh execution under the current corrected rule. This does not restore knowledge, deploy, or reverse external effects.');
   await recovery.getByRole('button',{name:'Approve exact change',exact:true}).click();
   await expect(recovery.getByRole('button',{name:'Accept project version',exact:true})).toBeVisible();

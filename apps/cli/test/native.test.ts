@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { materializeProjectContext, type ProjectContextPacket } from '@commonforge-org/core';
 import { checkPinnedNativeContext, validateNativeContext, writeNativeContext } from '../src/native.js';
+import { harness } from './helpers.js';
 import { ConfigStore } from '../src/config.js';
 import { run } from '../src/main.js';
 
@@ -61,6 +62,36 @@ describe('task scoped project context', () => {
       } }, { git: async () => { gitCalls++; return { code: 0, stdout: '', stderr: '' }; } });
       expect(code).toBe(1); expect(output).toContain(copied ? 'unsupported_version' : 'knowledge_stale'); expect(gitCalls).toBe(0);
     } finally { await rm(root, { recursive: true, force: true }); }
+  });
+  it.each([false,true])('reports renewal success only after real Git checkout and final active context (%s)', async revoked => {
+    const h=harness();
+    try {
+      h.world.addResource('source',{'index.txt':'actual local Git checkout'});
+      const task=h.world.createTask('Renewed bounded task',['source']);
+      const token='cfl_renewedtask123456';
+      task.generation=1;task.lease={token,generation:1,expiresAt:Date.now()+3600000,holder:'owner'};task.state='running';
+      const pinned={...packet,organizationId:task.snapshot.organizationId,projectId:task.snapshot.projectId,taskId:task.taskId,attemptId:'renewed-attempt',mandate:{...packet.mandate,organizationId:task.snapshot.organizationId,projectId:task.snapshot.projectId,taskId:task.taskId,id:'replacement-mandate',expiresAt:new Date(task.lease.expiresAt).toISOString()}};
+      const next={protocolVersion:1,attemptId:pinned.attemptId,mandateId:pinned.mandate.id,context:materializeProjectContext(pinned)};
+      h.world.overrides.set('POST /api/auth/task/verify',()=>({status:200,body:{...next,taskId:task.taskId,leaseToken:token,leaseGeneration:1,expiresAt:new Date(task.lease!.expiresAt).toISOString()}}));
+      h.world.overrides.set(`GET /api/tasks/${task.taskId}`,()=>({status:200,body:{state:'running',projectProtocolVersion:1}}));
+      let reads=0;
+      h.world.overrides.set(`GET /api/tasks/${task.taskId}/native/context`,()=>{reads++;return revoked&&reads>1?{status:403,body:{error:{code:'mandate_revoked',message:'Replacement revoked during clone'}}}:{status:200,body:next};});
+      const root=join(h.home,'renewed-workspace');
+      const result=await h.cli(['renew','--code','org.project.cfh_renewal123456','--out',root,'--json']);
+      if(revoked){expect(result.code).toBe(1);expect(result.json().error.code).toBe('mandate_revoked');expect(result.stdout).not.toContain('\"verified\":true');await expect(stat(root)).rejects.toThrow();return;}
+      expect(result.code,result.stdout+result.stderr).toBe(0);expect(result.json().attemptId).toBe('renewed-attempt');
+      expect(await readFile(join(root,'source/index.txt'),'utf8')).toBe('actual local Git checkout');
+      expect(JSON.parse(await readFile(join(root,'.commonforge/attempt.json'),'utf8')).mandateId).toBe('replacement-mandate');
+      expect(reads).toBe(2);await expect(stat(join(h.configDir,'session.json'))).rejects.toThrow();
+    }finally{await h.world.close();}
+  });
+  it('rejects renewal into an existing checkout before consuming its one-use code', async () => {
+    const root=await mkdtemp(join(tmpdir(),'cf-renewal-existing-'));let called=false;let out='';
+    try{
+      await writeFile(join(root,'preserved.txt'),'old work');
+      const code=await run(['renew','--code','org.project.cfh_renewal123456','--out',root,'--json'],{cwd:root,env:{CFORGE_CONFIG_DIR:join(root,'config')},stdout:x=>{out+=x;},stderr:()=>{},fetch:async()=>{called=true;throw new Error('must not exchange');}});
+      expect(code).toBe(1);expect(called).toBe(false);expect(out).toContain('workspace_not_empty');expect(await readFile(join(root,'preserved.txt'),'utf8')).toBe('old work');
+    }finally{await rm(root,{recursive:true,force:true});}
   });
   it('exchanges only task authority and never writes a broad user session or outputs the code/token', async () => {
     const root = await mkdtemp(join(tmpdir(), 'cf-native-'));

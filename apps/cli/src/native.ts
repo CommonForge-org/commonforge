@@ -1,5 +1,5 @@
 /** Task-scoped G1 handoff and immutable pinned context; no broad login is created. */
-import { chmod, lstat, mkdir, readFile, realpath, rename, writeFile } from 'node:fs/promises';
+import { chmod, lstat, mkdir, readFile, readdir, realpath, rename, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { z } from 'zod';
 import { canonicalJson, materializeProjectContext, type ProjectContextPacket } from '@commonforge-org/core';
@@ -50,19 +50,39 @@ export async function checkPinnedNativeContext(root: string, data: NativeContext
   const raw = JSON.parse(await readFile(join(root, '.commonforge', 'context.json'), 'utf8')) as unknown;
   if (materializeProjectContext(raw as ProjectContextPacket).digest !== data.context.digest) throw new CliError('context_invalid', 'workspace context was altered');
 }
-export async function handoff(ctx: CommandContext, args: readonly string[]): Promise<void> {
-  const p = parse(args, { code: { type: 'string' } }, 'cforge handoff --code <task-scoped code>');
-  const code = str(p, 'code'); if (!code) throw new CliError('invalid_arguments', 'a task-scoped --code is required');
+async function exchangeNativeAuthority(ctx:CommandContext,code:string) {
   rememberSecret(code);
-  const apiUrl = await resolveApiUrl(ctx.io, ctx.store, ctx.global.apiUrl);
-  const raw = await new ApiClient(ctx.io, apiUrl, null).post<Record<string, unknown>>('/api/auth/task/verify', { code });
-  const lease = z.object({ taskId: SafeTaskId, leaseToken: z.string().startsWith('cfl_'), leaseGeneration: z.number().int().nonnegative(), expiresAt: z.string().datetime({ offset: true }) }).parse(raw);
+  const apiUrl=await resolveApiUrl(ctx.io,ctx.store,ctx.global.apiUrl);
+  const raw=await new ApiClient(ctx.io,apiUrl,null).post<Record<string,unknown>>('/api/auth/task/verify',{code});
+  const lease=z.object({taskId:SafeTaskId,leaseToken:z.string().startsWith('cfl_'),leaseGeneration:z.number().int().nonnegative(),expiresAt:z.string().datetime({offset:true})}).parse(raw);
   rememberSecret(lease.leaseToken);
-  const data = validateNativeContext(raw, lease.taskId);
-  await ctx.store.saveConfig({ apiUrl });
-  await ctx.store.saveLease({ apiUrl, ...lease });
-  await safeWrite(join(ctx.store.dir, 'native'), `${lease.taskId}.json`, canonicalJson(data));
-  ctx.out.result({ taskId: lease.taskId, attemptId: data.attemptId, mandateId: data.mandateId, contextDigest: data.context.digest, expiresAt: lease.expiresAt }, `Task-scoped handoff ready for ${lease.taskId}. Run cforge checkout, then read .commonforge/context.md.`);
+  const data=validateNativeContext(raw,lease.taskId);
+  if(Date.parse(lease.expiresAt)!==Date.parse(data.context.packet.mandate.expiresAt))throw new CliError('context_invalid','task lease expiry does not match pinned replacement authority');
+  await ctx.store.saveConfig({apiUrl});await ctx.store.saveLease({apiUrl,...lease});
+  await safeWrite(join(ctx.store.dir,'native'),`${lease.taskId}.json`,canonicalJson(data));
+  return {lease,data};
+}
+export async function handoff(ctx: CommandContext, args: readonly string[]): Promise<void> {
+  const p=parse(args,{code:{type:'string'}},'cforge handoff --code <task-scoped code>');
+  const code=str(p,'code');if(!code)throw new CliError('invalid_arguments','a task-scoped --code is required');
+  const {lease,data}=await exchangeNativeAuthority(ctx,code);
+  ctx.out.result({taskId:lease.taskId,attemptId:data.attemptId,mandateId:data.mandateId,contextDigest:data.context.digest,expiresAt:lease.expiresAt},`Task-scoped handoff ready for ${lease.taskId}. Run cforge checkout, then read .commonforge/context.md.`);
+}
+/** A renewed code grants a NEW attempt; require a new materialized checkout before success. */
+export async function renew(ctx:CommandContext,args:readonly string[]):Promise<void> {
+  const usage='cforge renew --code <replacement handoff code> --out <NEW empty workspace>';
+  const p=parse(args,{code:{type:'string'},out:{type:'string'}},usage);
+  const code=str(p,'code'),out=str(p,'out');if(!code||!out)throw new CliError('invalid_arguments',usage);
+  const root=resolve(ctx.io.cwd,out);
+  try {
+    const metadata=await lstat(root);
+    if(metadata.isSymbolicLink()||!metadata.isDirectory()||(await readdir(root)).length)throw new CliError('workspace_not_empty','renewal requires a new empty directory; preserve the previous checkout and its recorded context');
+  } catch(error){if(error instanceof CliError||(error as {code?:string}).code!=='ENOENT')throw error;}
+  // Fail BEFORE consuming a single-use code if the current shell would override the new lease.
+  if(ctx.io.env.CFORGE_LEASE_TOKEN)throw new CliError('lease_override_active','unset CFORGE_LEASE_TOKEN before exchanging replacement authority; renewal stores its own task lease');
+  const {lease}=await exchangeNativeAuthority(ctx,code);
+  try {const {checkout}=await import('./checkout.js');await checkout(ctx,[lease.taskId,root]);}
+  catch(error){throw new CliError(error instanceof CliError?error.code:'renewal_checkout_failed',`Replacement authority was exchanged but a verified fresh checkout did not complete. Retry cforge checkout ${lease.taskId} into a new empty directory; if authority expired or was revoked, ask for another replacement handoff. ${error instanceof Error?error.message:'Checkout failed.'}`);}
 }
 export async function contextCommand(ctx: CommandContext, args: readonly string[]): Promise<void> {
   const p = parse(args, { out: { type: 'string' } }, 'cforge context <taskId> [--out <workspace>]');

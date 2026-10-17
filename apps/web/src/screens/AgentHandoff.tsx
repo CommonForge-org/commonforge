@@ -288,20 +288,27 @@ export function TaskHandoffLoader({ taskId, ctx, load, ownTask = true, onDone }:
 }
 
 
+/** A replacement always starts in a unique empty checkout; existing context stays historical. */
+export function nativeAgentPrompt(task:HandoffTask,ctx:HandoffContext,code:string,nonce:string=crypto.randomUUID()):string {
+  const safe=(value:string)=>{const word=shellWord(value);if(!word)throw new Error('The handoff contains an unsupported command value.');return word;};
+  const initialDir=checkoutDir(task.title),replacement=!!task.lease;
+  const dir=replacement?`${initialDir}-renewed-${safe(nonce)}`:initialDir;
+  const commands=replacement?`cforge renew --api-url ${safe(ctx.apiUrl)} --code ${safe(code)} --out ${safe(dir)}`:`cforge handoff --api-url ${safe(ctx.apiUrl)} --code ${safe(code)}\ncforge checkout ${safe(task.taskId)} ${safe(dir)}\ncforge context ${safe(task.taskId)} --out ${safe(dir)}`;
+  return `Work on CommonForge task ${task.taskId}: ${task.title}\n${task.request}\n\nUse only the task-scoped handoff below. Build cforge from the public CommonForge source if unavailable.\n${CLI_SOURCE_INSTALL}\n\n${commands}\n\nRead ${dir}/.commonforge/context.md and context.json before editing. Preserve confirmed rules and their corrections. Do not edit .commonforge files. Implement only the assigned task, then run applicable checks and cforge submit from the checkout. Propose corrections through structured native commands; human confirmation, acceptance and release are separate authority. No provider credentials or broad user login are required.${replacement?' Previous mandate stays revoked. Preserve the old checkout; this creates a fresh attempt and pinned context.':''}`;
+}
+
 /** Native projects exchange one-use task authority; never create a broad CLI session. */
 function NativeAgentHandoff({ task, ctx, onDone }: { task: HandoffTask; ctx: HandoffContext; onDone: () => void }) {
   const [agentId, setAgentId] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [copied, setCopied] = useState(false);
-  const dir = checkoutDir(task.title);
   const copy = () => {
     setBusy(true); setError(null);
     const prompt = fetch(`/api/tasks/${encodeURIComponent(task.taskId)}/native/handoff`, { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ agentId }) }).then(async res => {
       const body = await res.json() as { code?: string; error?: { code: string; message: string } };
       if (!res.ok || !body.code) throw new ApiError(res.status, body.error?.code ?? 'handoff_failed', body.error?.message ?? 'Task handoff could not be issued.');
-      const safe = (value: string) => { const word = shellWord(value); if (!word) throw new Error('The handoff contains an unsupported command value.'); return word; };
-      return `Work on CommonForge task ${task.taskId}: ${task.title}\n${task.request}\n\nUse only the task-scoped handoff below. Build cforge from the public CommonForge source if unavailable.\n${CLI_SOURCE_INSTALL}\n\ncforge handoff --api-url ${safe(ctx.apiUrl)} --code ${safe(body.code)}\ncforge checkout ${safe(task.taskId)} ${safe(dir)}\ncforge context ${safe(task.taskId)} --out ${safe(dir)}\n\nRead ${dir}/.commonforge/context.md and context.json before editing. Preserve confirmed rules and their corrections. Do not edit .commonforge files. Implement only the assigned task, then run applicable checks and cforge submit from the checkout. Propose corrections through structured native commands; human confirmation, acceptance and release are separate authority. No provider credentials or broad user login are required.`;
+      return nativeAgentPrompt(task,ctx,body.code);
     });
     void copyLater(prompt).then(() => setCopied(true), e => setError(e)).finally(() => setBusy(false));
   };

@@ -80,6 +80,13 @@ function absolute(path: string | undefined, what: string): string {
 
 export const TOOLS: ToolDef[] = [
   {
+    name: "renew_task_authority", title: "Renew into a fresh task checkout",
+    description: "Exchange the human-issued replacement renewal code and materialize a new empty workspace with fresh attempt/context. Prior mandate and token remain revoked. Reports success only after checkout and final authority validation; never extends an old pinned checkout.",
+    inputSchema: { type: "object", properties: { code: text("Human-issued one-use replacement task code."), folder: text("Absolute NEW empty workspace path."), api_url: text("CommonForge server origin.") }, required: ["code", "folder"], additionalProperties: false },
+    annotations: { idempotentHint: false, openWorldHint: true },
+    argv: a => ({ command: "renew", options: [opt("code", a.code ?? ""), opt("out", absolute(a.folder, "folder")), ...(a.api_url ? [opt("api-url", a.api_url)] : [])] }),
+  },
+  {
     name: "inspect_attempt_results", title: "Inspect own attempt results",
     description: "Read this task-scoped attempt's exact proposals, evidence, human decisions and accepted manifests. No access to other task attempts.",
     inputSchema: { type: "object", properties: { task_id: text("Assigned task id.") }, required: ["task_id"], additionalProperties: false },
@@ -300,7 +307,7 @@ export class McpServer {
     } catch (e) {
       return fail(e instanceof CliError ? e.code : "invalid_arguments", (e as Error).message);
     }
-    if (tool.name === "sign_in" || tool.name === "exchange_task_handoff") {
+    if (tool.name === "sign_in" || tool.name === "exchange_task_handoff" || tool.name === "renew_task_authority") {
       const refused = await this.#refuseSwitch(cmd);
       if (refused) return fail("signed_in_elsewhere", refused);
     }

@@ -4,21 +4,26 @@ import { canonicalJson, checkPath, computeKnowledgeHead, computeProjectManifestH
 import { createNativeGenesis } from './project.js';
 const Id=z.string().min(1).max(256);
 const Digest=z.string().regex(/^[a-f0-9]{64}$/);
-export const PROJECT_BUNDLE_LIMITS={maxBytes:16*1024*1024,maxPayloadBytes:8*1024*1024,maxPayloads:1000} as const;
+export const PROJECT_BUNDLE_LIMITS={maxBytes:16*1024*1024,maxPayloadBytes:8*1024*1024,maxPayloads:1000,maxLineageDepth:8,maxLineageArchives:32} as const;
 export const ProjectBundlePayloadSchema=z.object({kind:z.enum(['source','attachment','log']),subject:Id,path:z.string().min(1).max(1024),digest:Digest,size:z.number().int().nonnegative().max(PROJECT_BUNDLE_LIMITS.maxPayloadBytes),mediaType:Id,contentBase64:z.string().max(Math.ceil(PROJECT_BUNDLE_LIMITS.maxPayloadBytes/3)*4)}).strict();
 export type ProjectBundlePayload=z.infer<typeof ProjectBundlePayloadSchema>;
 const CompletenessSchema=z.object({metadata:z.literal('complete'),missingSources:z.array(Id).max(10000),missingAttachments:z.array(Digest).max(10000),completeBackup:z.literal(false),sourceContentValidation:z.literal('not-performed')}).strict();
-export const ProjectBundleSchema=z.object({domain:z.literal('cf.project-bundle/1'),schemaVersion:z.literal(1),history:ProjectStateSchema,payloads:z.array(ProjectBundlePayloadSchema).max(PROJECT_BUNDLE_LIMITS.maxPayloads),completeness:CompletenessSchema,digest:Digest}).strict();
-export type ProjectBundle=z.infer<typeof ProjectBundleSchema>;
+// V1 remains exact: no new field or hash interpretation is added to its content.
+export const ProjectBundleV1Schema=z.object({domain:z.literal('cf.project-bundle/1'),schemaVersion:z.literal(1),history:ProjectStateSchema,payloads:z.array(ProjectBundlePayloadSchema).max(PROJECT_BUNDLE_LIMITS.maxPayloads),completeness:CompletenessSchema,digest:Digest}).strict();
+export type ProjectBundleV1=z.infer<typeof ProjectBundleV1Schema>;
+export type ProjectBundleV2=Omit<ProjectBundleV1,'domain'|'schemaVersion'> & {domain:'cf.project-bundle/2';schemaVersion:2;lineage:ProjectBundle[]};
+export type ProjectBundle=ProjectBundleV1|ProjectBundleV2;
+export const PROJECT_BUNDLE_VERSIONS=[1,2] as const;
+export const ProjectBundleSchema:z.ZodType<ProjectBundle>=z.lazy(()=>z.union([ProjectBundleV1Schema,ProjectBundleV1Schema.omit({domain:true,schemaVersion:true}).extend({domain:z.literal('cf.project-bundle/2'),schemaVersion:z.literal(2),lineage:z.array(ProjectBundleSchema).max(PROJECT_BUNDLE_LIMITS.maxLineageArchives)}).strict()]));
 const invalid=(message:string):never=>{throw new ProjectError('bundle_invalid',message);};
 /** No coordinates/secrets are added by exporter. Recognizable secrets/local URLs fail closed;
  * arbitrary application prose cannot be guaranteed secret-free and must be reviewed by exporter. */
 function inspectText(text:string) {
- if(/-----BEGIN (?:[A-Z ]+ )?PRIVATE KEY-----|\bBearer\s+[A-Za-z0-9._~+\/-]{16,}|\b(?:gh[pousr]_|github_pat_|cf[sm]_)[A-Za-z0-9_\-]{16,}|\b(?:api[_-]?key|access[_-]?token|client[_-]?secret|password)\s*[:=]\s*[^\s,}\]"']+/i.test(text)) invalid('credential-like content cannot be exported or imported');
+ if(/-----BEGIN (?:[A-Z ]+ )?PRIVATE KEY-----|\bBearer\s+[A-Za-z0-9._~+\/-]{16,}|\b(?:gh[pousr]_|github_pat_)[A-Za-z0-9_\-]{16,}|\bcf[slmh]_[A-Za-z0-9_\-]{8,}|\b(?:api[_-]?key|access[_-]?token|client[_-]?secret|password)\s*[:=]\s*[^\s,}\]"']+/i.test(text)) invalid('credential-like content cannot be exported or imported');
  if(/file:\/\/|https?:\/\/[^\s"/@]+:[^\s"/@]+@|https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?=[:/"\s])|(?:^|[\s"'])\/(?:home|Users|tmp|var|root)\//i.test(text)) invalid('sensitive local coordinates cannot be bundled');
 }
 function bytes(payload:ProjectBundlePayload):Uint8Array {
- if(!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(payload.contentBase64)) return invalid('payload is not canonical base64');
+ if(payload.contentBase64.length%4!==0 || /[^A-Za-z0-9+/=]/.test(payload.contentBase64)) return invalid('payload is not canonical base64');
  let decoded:string;try{decoded=atob(payload.contentBase64);}catch{return invalid('payload base64 is malformed');}
  if(btoa(decoded)!==payload.contentBase64) invalid('payload base64 is not canonical');
  return Uint8Array.from(decoded,x=>x.charCodeAt(0));
@@ -64,21 +69,47 @@ function checkPayloads(s:ProjectState,payloads:ProjectBundlePayload[]) {
  }
 }
 /** Caller must authorize the entire exported history and retrieve payloads through scoped storage. */
-export function exportProjectBundle(input:ProjectState,payloads:ProjectBundlePayload[]=[]):ProjectBundle {
+export function exportProjectBundle(input:ProjectState,payloads:ProjectBundlePayload[]=[],lineage:ProjectBundle[]=[],version:1|2=lineage.length?2:1):ProjectBundle {
+ if(version===1 && lineage.length) invalid('bundle version 1 cannot preserve imported lineage; request version 2');
  const history=ProjectStateSchema.parse(input);
  const parsed=payloads.map(p=>ProjectBundlePayloadSchema.parse(p)).sort((a,b)=>a.path.localeCompare(b.path));
- const content={domain:'cf.project-bundle/1' as const,schemaVersion:1 as const,history,payloads:parsed,completeness:completeness(history,parsed)};
+ const common={history,payloads:parsed,completeness:completeness(history,parsed)};
+ const content=version===1?{domain:'cf.project-bundle/1' as const,schemaVersion:1 as const,...common}:{domain:'cf.project-bundle/2' as const,schemaVersion:2 as const,...common,lineage};
  return validateProjectBundle({...content,digest:hashCanonicalSync(content)});
+}
+/** Bound recursive lineage BEFORE canonical encoding or schema parsing. Exact original bundles
+ * remain inert provenance, with their own hashes and completeness reports. No truncation occurs. */
+function boundLineage(raw:unknown) {
+ const pending=[{value:raw,depth:0}];const seen=new Set<object>();let count=0;
+ while(pending.length){
+  const {value,depth}=pending.pop()!;
+  if(!value || typeof value!=='object')continue;
+  if(seen.has(value))invalid('duplicate or cyclic lineage archive');seen.add(value);
+  if(depth>PROJECT_BUNDLE_LIMITS.maxLineageDepth || ++count>PROJECT_BUNDLE_LIMITS.maxLineageArchives+1)invalid('bundle lineage exceeds archive or depth limit');
+  const lineage=(value as {lineage?:unknown}).lineage;
+  if(Array.isArray(lineage)){
+   if(lineage.length>PROJECT_BUNDLE_LIMITS.maxLineageArchives)invalid('bundle lineage exceeds archive limit');
+   for(const child of lineage)pending.push({value:child,depth:depth+1});
+  }
+ }
 }
 /** Validates before any filesystem/storage writes. It is JSON, not an automatically extracted ZIP. */
 export function validateProjectBundle(raw:unknown):ProjectBundle {
+ boundLineage(raw);
  let encoded:string;try{encoded=canonicalJson(raw);}catch{return invalid('bundle is not canonical JSON data');}
  if(new TextEncoder().encode(encoded).byteLength>PROJECT_BUNDLE_LIMITS.maxBytes) invalid('bundle exceeds byte limit');
  const parsed=ProjectBundleSchema.safeParse(raw);if(!parsed.success) return invalid('unsupported or malformed project bundle');
- const bundle=parsed.data; const {digest,...content}=bundle;
- if(hashCanonicalSync(content)!==digest) invalid('bundle digest failed');
- inspectText(canonicalJson(bundle.history));checkHistory(bundle.history);checkPayloads(bundle.history,bundle.payloads);
- if(!sameCompleteness(bundle.completeness,completeness(bundle.history,bundle.payloads))) invalid('bundle completeness claims do not match payloads');
+ const bundle=parsed.data;const pending=[bundle],digests=new Set<string>();let payloadCount=0,payloadBytes=0;
+ while(pending.length){
+  const archive=pending.pop()!;const {digest,...content}=archive;
+  if(digests.has(digest))invalid('duplicate lineage archive digest');digests.add(digest);
+  if(hashCanonicalSync(content)!==digest) invalid('bundle digest failed');
+  inspectText(canonicalJson(archive.history));checkHistory(archive.history);checkPayloads(archive.history,archive.payloads);
+  payloadCount+=archive.payloads.length;payloadBytes+=archive.payloads.reduce((sum,p)=>sum+p.size,0);
+  if(bundle.schemaVersion===2 && (payloadCount>PROJECT_BUNDLE_LIMITS.maxPayloads || payloadBytes>PROJECT_BUNDLE_LIMITS.maxPayloadBytes))invalid('bundle lineage exceeds total payload limit');
+  if(!sameCompleteness(archive.completeness,completeness(archive.history,archive.payloads))) invalid('bundle completeness claims do not match payloads');
+  if(archive.schemaVersion===2)pending.push(...archive.lineage);
+ }
  return bundle;
 }
 function sameCompleteness(a:unknown,b:unknown) {return canonicalJson(a)===canonicalJson(b);}

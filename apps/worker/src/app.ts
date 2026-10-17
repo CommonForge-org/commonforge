@@ -39,6 +39,7 @@ import { stagingRoutes } from "./routes/staging.js";
 import { promotionRoutes } from "./routes/promotions.js";
 import { nativeRecoveryRoutes } from "./routes/native-recovery.js";
 import { nativeProjectRoutes } from "./routes/native-projects.js";
+import { nativeRenewalRoutes } from "./routes/native-renewal.js";
 import { nativeSubmitRoutes } from "./routes/native-submit.js";
 import { nativePayloadRoutes } from "./routes/native-payloads.js";
 import { ARTIFACT_EVENTS_QUEUE, handleArtifactEventsBatch } from "./services/artifact-events.js";
@@ -96,6 +97,7 @@ export function createApp(deps: Deps = defaultDeps) {
   app.route("/api", nativeProjectRoutes);
   app.route("/api", nativeRecoveryRoutes);
   app.route("/api", nativeSubmitRoutes);
+  app.route("/api", nativeRenewalRoutes);
   app.route("/api", nativePayloadRoutes);
   app.route("/api", orgRoutes);
   app.route("/api", projectRoutes);

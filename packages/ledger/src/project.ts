@@ -26,6 +26,7 @@ export const ProjectCommandSchema = z.union([
   command('upsertOutcome', { record: ProjectOutcomeSchema }),
   command('draftScenario', { record: ScenarioRevisionSchema }),
   command('confirmScenario', { id: Id, revision: rev, decisionId: Id, explanation: z.string().min(1).max(32768) }),
+  command('archiveScenario', { id: Id, revision: rev, decisionId: Id, explanation: z.string().min(1).max(32768) }),
   command('issueMandate', { record: AgentMandateSchema }),
   command('exchangeHandoff', { record: ProjectAttemptSchema }),
   command('revokeMandate', { id: Id, revision: rev }),
@@ -103,7 +104,7 @@ function refreshKnowledge(s: ProjectState) {
 function confirm<T extends KnowledgeRevision | ScenarioRevision>(s:ProjectState,list:T[],id:string,revision:number,decisionId:string,a:ProjectActor,archived=false) {
   const r = list.filter(r=>r.id===id).sort((a,b)=>b.revision-a.revision)[0];
   if(!r || r.revision!==revision || (!archived && r.confirmation!==null)) fail('revision_conflict','draft revision is no longer current');
-  if ('ruleRefs' in r!) for(const ref of (r as ScenarioRevision).ruleRefs) if(!currentConfirmed(s.knowledge).some(k=>k.id===ref.id && k.revision===ref.revision)) fail('knowledge_stale','scenario references a non-current confirmed rule');
+  if (!archived && 'ruleRefs' in r!) for(const ref of (r as ScenarioRevision).ruleRefs) if(!currentConfirmed(s.knowledge).some(k=>k.id===ref.id && k.revision===ref.revision)) fail('knowledge_stale','scenario references a non-current confirmed rule');
   const next = {...r!,revision:revision+1,predecessor:revision,author:a.actorId,createdAt:a.now,archived,confirmation:{actor:a.actorId,confirmedAt:a.now,authorityRevision:authority(s,a.actorId,true).revision,decisionId}} as T;
   appendRevision(list,next);
   return next;
@@ -145,12 +146,12 @@ function transition(input:ProjectState,raw:unknown,actor:ProjectActor,artifact?:
       if(c.type==='draftKnowledge') appendRevision(s.knowledge,c.record); else appendRevision(s.scenarios,c.record);
       resultId=r.id; break;
     }
-    case 'confirmKnowledge': case 'archiveKnowledge': case 'confirmScenario': {
+    case 'confirmKnowledge': case 'archiveKnowledge': case 'confirmScenario': case 'archiveScenario': {
       if(s.decisions.some(d=>d.id===c.decisionId)) fail('revision_conflict','decision identity already exists');
-      if(c.type==='confirmScenario') {
+      if(c.type==='confirmScenario' || c.type==='archiveScenario') {
         const scenario=s.scenarios.find(r=>r.id===c.id&&r.revision===c.revision);
-        if(scenario?.ruleRefs.some(ref=>!s.knowledge.some(r=>r.id===ref.id&&r.revision===ref.revision&&r.confirmation!==null&&!r.archived)))fail('revision_conflict','scenario references unavailable confirmed knowledge');
-        confirm(s,s.scenarios,c.id,c.revision,c.decisionId,actor);
+        if(c.type==='confirmScenario' && scenario?.ruleRefs.some(ref=>!s.knowledge.some(r=>r.id===ref.id&&r.revision===ref.revision&&r.confirmation!==null&&!r.archived)))fail('revision_conflict','scenario references unavailable confirmed knowledge');
+        confirm(s,s.scenarios,c.id,c.revision,c.decisionId,actor,c.type==='archiveScenario');
       } else confirm(s,s.knowledge,c.id,c.revision,c.decisionId,actor,c.type==='archiveKnowledge');
       const subject=hashCanonicalSync({domain:'cf.knowledge-confirmation/1',projectId:s.projectId,type:c.type,id:c.id,revision:c.revision});
       unique(s.decisions,{schemaVersion:1,organizationId:s.organizationId,projectId:s.projectId,id:c.decisionId,author:actor.actorId,createdAt:actor.now,envelopeDigest:subject,innerProposalHash:null,action:'approve',explanation:c.explanation,authorityRevision:auth.revision});
@@ -167,11 +168,11 @@ function transition(input:ProjectState,raw:unknown,actor:ProjectActor,artifact?:
       if(r.agentId!==actor.actorId || r.agentId!==m.agentId || r.taskId!==m.taskId || r.mandateRevision!==m.revision || r.knowledgeHead!==s.knowledgeHead || r.startedAt!==actor.now || r.endedAt!==null || r.status!=='active' || r.proposalIds.length || !m.operations.includes('context:read') || s.attempts.filter(a=>a.mandateId===m.id).length>=m.maxAttempts) fail('mandate_scope_denied','attempt exceeds current mandate');
       unique(s.attempts,r); resultId=r.id; break;
     }
-    case 'revokeMandate': case 'renewMandate': {
+    case 'renewMandate': fail('project_mode_unsupported','renewal requires a replacement task handoff and fresh pinned checkout'); break;
+    case 'revokeMandate': {
       const m=s.mandates.filter(m=>m.id===c.id).sort((a,b)=>b.revision-a.revision)[0];
       if(!m || m.revision!==c.revision || m.revokedAt) fail('revision_conflict','mandate revision changed');
-      if(c.type==='renewMandate' && Date.parse(c.expiresAt)<=Date.parse(actor.now)) fail('invalid_project_record','renewal must expire in future');
-      s.mandates.push({...m!,revision:c.revision+1,author:actor.actorId,createdAt:actor.now,...(c.type==='revokeMandate'?{revokedAt:actor.now,revocationGeneration:m!.revocationGeneration+1}:{expiresAt:c.expiresAt})});
+      s.mandates.push({...m!,revision:c.revision+1,author:actor.actorId,createdAt:actor.now,revokedAt:actor.now,revocationGeneration:m!.revocationGeneration+1});
       if(c.type==='revokeMandate') s.attempts=s.attempts.map(a=>a.mandateId===c.id?{...a,status:'revoked' as const,endedAt:actor.now}:a);
       resultId=c.id; break;
     }

@@ -27,9 +27,21 @@ client account systems remain separate integrations.
 
 ## Bundle contract implemented in G1
 
-`exportProjectBundle(state, payloads?)` returns a strict `cf.project-bundle/1` JSON archive with exact
-historical state, manifest/knowledge/proposal integrity checks, optional content-addressed payloads,
-and a digest. `validateProjectBundle` checks version, sizes, digests, scope, paths, duplicate
+`exportProjectBundle(state, payloads?, lineage?, version?)` preserves the strict
+`cf.project-bundle/1` archive and its original hashes. Version 2 (`cf.project-bundle/2`) additionally
+binds exact imported archives in `lineage`, including their retained payloads and original digests.
+An A → B → C export/import chain therefore preserves A's history without activating its trust.
+The API advertises `bundleVersions: [1, 2]` and defaults to version 2; `bundleVersion=1` remains
+available for projects without imported archives and refuses an export that would discard lineage.
+The separate `importedHistory` response remains for older readers, but is no longer needed to
+carry ancestry separately from the portable bundle. `includePayloads=1` adds available local
+payloads; already retained historical payloads stay inside their exact ancestor archive.
+
+Both versions retain exact historical state, manifest/knowledge/proposal integrity checks, optional
+content-addressed payloads, and a digest. Across the entire portable bundle, limits are 16 MiB of
+canonical JSON, 8 MiB of decoded payloads, 1,000 payload entries, 32 ancestor archives, and eight
+lineage levels. Oversized exports/imports refuse explicitly; history is never silently truncated.
+The iterative lineage depth/count guard runs before recursive schema parsing or canonicalization. `validateProjectBundle` checks version, sizes, digests, scope, paths, duplicate
 identities, manifest chains and completeness claims before storage writes. Payloads use canonical
 base64, SHA-256 and the sole allowed path `payloads/<digest>`; the helper extracts no archive.
 

@@ -1908,7 +1908,13 @@ OrgLedger. D1 indexes do not authorize native acceptance.
 - `GET …/native/bundle?includePayloads=1` exports validated history and retained evidence bytes with
   explicit source/attachment completeness. `POST /api/orgs/:org/native/import
   {name,idempotencyKey,bundle}` creates fresh local authority, draft knowledge and an untrusted archive;
-  it does not restore Git or authorize imported evidence. Export again returns the original archive.
+  it does not restore Git or authorize imported evidence. The portable `bundle` defaults to
+  `cf.project-bundle/2` and includes exact inert ancestor bundles in `lineage`, retaining their digests
+  and payloads across repeated imports. Responses advertise `bundleVersions: [1,2]`. Request
+  `bundleVersion=1` for the original schema only when no imported lineage would be lost; unsupported
+  versions and lossy version-1 exports refuse. The separate `importedHistory` field remains compatible.
+  Bounds apply across local and ancestor content: 16 MiB JSON, 8 MiB decoded payloads, 1,000 payloads,
+  32 ancestors and eight lineage levels. Exceeding them refuses rather than truncating history.
 
 Source acceptance invokes existing `planCommit` checks and writes artifact heads plus project manifest
 in the same SQLite transaction. Native source locks also block legacy queue acceptance, restore and

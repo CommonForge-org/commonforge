@@ -42,6 +42,14 @@ it('round-trips native history through the API without importing authority or co
  const imported=await h.api('POST',`/api/orgs/${o.orgId}/native/import`,{token:o.token,body:{name:'Imported understanding',idempotencyKey:'portable-import',bundle:exported.body.bundle}});expect(imported.status,JSON.stringify(imported.body)).toBe(201);
  expect(imported.body.requiresLocalConfirmation).toBe(true);expect(imported.body.state.knowledge).toHaveLength(1);expect(imported.body.state.knowledge[0].confirmation).toBeNull();expect(imported.body.state.decisions).toHaveLength(0);expect(imported.body.state.evidence).toHaveLength(0);expect(imported.body.state.sourceHeads).toHaveLength(0);
  const roundtrip=await h.api('GET',`/api/orgs/${o.orgId}/projects/${imported.body.projectId}/native/bundle`,{token:o.token});expect(roundtrip.status).toBe(200);expect(roundtrip.body.importedHistory).toEqual(exported.body.bundle);expect(roundtrip.body.bundle.completeness.completeBackup).toBe(false);
+ expect(roundtrip.body.bundleVersions).toEqual([1,2]);expect(roundtrip.body.bundle.schemaVersion).toBe(2);expect(roundtrip.body.bundle.lineage).toEqual([exported.body.bundle]);
+ const legacy=await h.api('GET',`/api/orgs/${o.orgId}/projects/${imported.body.projectId}/native/bundle?bundleVersion=1`,{token:o.token});expect(legacy.status).toBe(409);expect(legacy.body.error.code).toBe('bundle_invalid');
+ const second=await h.api('POST',`/api/orgs/${o.orgId}/native/import`,{token:o.token,body:{name:'Second generation understanding',idempotencyKey:'portable-import-second',bundle:roundtrip.body.bundle}});expect(second.status,JSON.stringify(second.body)).toBe(201);
+ const secondExport=await h.api('GET',`/api/orgs/${o.orgId}/projects/${second.body.projectId}/native/bundle`,{token:o.token});expect(secondExport.status).toBe(200);expect(secondExport.body.bundle.lineage[0].digest).toBe(roundtrip.body.bundle.digest);expect(secondExport.body.bundle.lineage[0].lineage[0]).toEqual(exported.body.bundle);
+ expect(second.body.state.authorities).toEqual([{principalId:o.userId,role:'owner',revision:1,active:true}]);expect(second.body.state.evidence).toEqual([]);expect(second.body.state.decisions).toEqual([]);expect(second.body.state.sourceHeads).toEqual([]);
+ const v1=await h.api('GET',path+'/bundle?bundleVersion=1',{token:o.token});expect(v1.status).toBe(200);expect(v1.body.bundle.domain).toBe('cf.project-bundle/1');expect(v1.body.bundle.lineage).toBeUndefined();
+ const unsupported=await h.api('GET',path+'/bundle?bundleVersion=3',{token:o.token});expect(unsupported.status).toBe(400);
+
 });
 
 it('serializes simultaneous confirmations so exactly one stale-generation writer wins',async()=>{

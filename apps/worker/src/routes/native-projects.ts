@@ -2,7 +2,7 @@
 import { Hono, type Context } from 'hono';
 import { z } from 'zod';
 import { ProjectStateSchema, computeProjectProposalHash, sha256HexSync, currentConfirmed, type ProjectState, type ProjectProposalEnvelope } from '@commonforge-org/core';
-import { exportProjectBundle, validateProjectBundle, ProjectCommandSchema } from '@commonforge-org/ledger';
+import { exportProjectBundle, validateProjectBundle, PROJECT_BUNDLE_VERSIONS, ProjectCommandSchema } from '@commonforge-org/ledger';
 import { signScenarioRequest, verifyScenarioResult, scenarioBuildDigest, type ScenarioVerificationRequest } from '@commonforge-org/runner-protocol';
 import type { AppEnv } from '../context.js';
 import { ApiError, conflict, forbidden, notFound, readJson, badRequest } from '../lib/http.js';
@@ -29,13 +29,19 @@ export async function nativeState(c:Context<AppEnv>, actor:OrgActor, pid:string)
 }
 nativeProjectRoutes.get(root,async c=>{
   const actor=await orgActor(c,c.req.param('org'),['owner','developer']);
-  return c.json({protocolVersion:1,state:await nativeState(c,actor,c.req.param('pid'))});
+  return c.json({protocolVersion:1,bundleVersions:PROJECT_BUNDLE_VERSIONS,state:await nativeState(c,actor,c.req.param('pid'))});
 });
 nativeProjectRoutes.get(`${root}/:collection`,async c=>{
   const actor=await orgActor(c,c.req.param('org'),['owner','developer']);
   const s=await nativeState(c,actor,c.req.param('pid'));if(!s)throw notFound();
   const key=c.req.param('collection');
-  if(key==='bundle') return c.json({bundle:exportProjectBundle(s,c.req.query('includePayloads')==='1'?await exportNativePayloads(c.get('svc'),actor.orgId,s.projectId,s):[]),importedHistory:(await c.get('svc').ledger(actor.orgId).nativeArchive(s.projectId)) ? JSON.parse((await c.get('svc').ledger(actor.orgId).nativeArchive(s.projectId))!) : null});
+  if(key==='bundle') {
+    const requested=c.req.query('bundleVersion')??'2';
+    if(requested!=='1'&&requested!=='2')throw badRequest('bundle_invalid','supported bundle versions are 1 and 2');
+    const archive=await c.get('svc').ledger(actor.orgId).nativeArchive(s.projectId);
+    const importedHistory=archive?validateProjectBundle(JSON.parse(archive)):null;
+    return c.json({bundleVersions:PROJECT_BUNDLE_VERSIONS,bundle:exportProjectBundle(s,c.req.query('includePayloads')==='1'?await exportNativePayloads(c.get('svc'),actor.orgId,s.projectId,s):[],importedHistory?[importedHistory]:[],Number(requested) as 1|2),importedHistory});
+  }
   const collections=['outcomes','knowledge','scenarios','proposals','decisions','evidence','manifests','observations','attempts'] as const;
   if(!collections.includes(key as typeof collections[number]))throw notFound();
   const cursor=Number(c.req.query('cursor')??0),limit=Number(c.req.query('limit')??50);
@@ -83,6 +89,7 @@ nativeProjectRoutes.post(`${root}/commands`,async c=>{
   const command=await readJson(c,ProjectCommandSchema);const svc=c.get('svc'),ledger=svc.ledger(actor.orgId);
   if(command.type==='prepareProposal' && command.record.envelope.recovery)throw forbidden('mandate_scope_denied','prepare recovery through the dedicated recovery endpoint');
   // Agent mandate/attempt creation is performed only by the scoped handoff service.
+  if(command.type==='renewMandate')throw conflict('project_mode_unsupported','renewal requires a replacement task handoff and fresh pinned checkout; use POST /tasks/:id/native/renew');
   if(['issueMandate','exchangeHandoff'].includes(command.type))throw forbidden('mandate_scope_denied','use a task handoff');
   if(command.type==='recordEvidence' && command.record.provenance!=='human-attested')throw forbidden('scenario_evidence_invalid','automated evidence must come from a verified runner');
   let input:Awaited<ReturnType<typeof acceptInputFor>>|undefined;
@@ -141,7 +148,8 @@ nativeProjectRoutes.get('/tasks/:id/native/results',async c=>{
   const p=c.get('principal');if(p?.kind!=='agent'||!p.native)throw forbidden('mandate_scope_denied');
   const value=await svc.ledger(task.org_id).getNativeProject(task.project_id);if(!value)throw notFound();const s=ProjectStateSchema.parse(JSON.parse(value));
   const proposals=s.proposals.filter(r=>r.envelope.attemptId===p.native!.attemptId);const digests=new Set(proposals.map(r=>r.digest));
-  return c.json({protocolVersion:1,generation:s.generation,attempt:s.attempts.find(a=>a.id===p.native!.attemptId),proposals:proposals.slice(-100),evidence:s.evidence.filter(e=>digests.has(e.envelopeDigest)).slice(-100),decisions:s.decisions.filter(d=>digests.has(d.envelopeDigest)).slice(-100),manifests:s.manifests.filter(m=>m.envelopeDigest&&digests.has(m.envelopeDigest)).slice(-100)});
+  const verifications=JSON.parse(await svc.ledger(task.org_id).listNativeVerifications(task.org_id,task.project_id,p.native.agentId,proposals.slice(-100).map(p=>p.digest),0,100));
+  return c.json({verifications,protocolVersion:1,generation:s.generation,attempt:s.attempts.find(a=>a.id===p.native!.attemptId),proposals:proposals.slice(-100),evidence:s.evidence.filter(e=>digests.has(e.envelopeDigest)).slice(-100),decisions:s.decisions.filter(d=>digests.has(d.envelopeDigest)).slice(-100),manifests:s.manifests.filter(m=>m.envelopeDigest&&digests.has(m.envelopeDigest)).slice(-100)});
 });
 nativeProjectRoutes.post('/tasks/:id/native/commands',async c=>{
   const svc=c.get('svc'),task=await getTask(svc,c.req.param('id'));if(!task)throw notFound();await taskActor(c,task,{allowUser:false});
@@ -172,17 +180,27 @@ nativeProjectRoutes.post('/tasks/:id/native/proposals',async c=>{
   const record={schemaVersion:1,organizationId:task.org_id,projectId:task.project_id,id:proposalId,author:principal.native.agentId,createdAt:svc.nowIso(),envelope,digest:computeProjectProposalHash(envelope)};
   const result=JSON.parse(await ledger.nativeCommand(task.org_id,task.project_id,{type:'prepareProposal',record,expectedGeneration:body.expectedGeneration,idempotencyKey:body.idempotencyKey},principal.native.agentId));return c.json({...result,proposal:record},201);
 });
+nativeProjectRoutes.get(`${root}/proposals/:proposal/verifications`,async c=>{
+  const actor=await orgActor(c,c.req.param('org'),['owner','developer']),pid=c.req.param('pid'),s=await nativeState(c,actor,pid);if(!s)throw notFound();
+  const p=s.proposals.find(p=>p.id===c.req.param('proposal'));if(!p)throw notFound();
+  const cursor=Number(c.req.query('cursor')??0),limit=Number(c.req.query('limit')??50);
+  if(!Number.isSafeInteger(cursor)||cursor<0||!Number.isInteger(limit)||limit<1||limit>100)throw badRequest('invalid_request');
+  return c.json(JSON.parse(await c.get('svc').ledger(actor.orgId).listNativeVerifications(actor.orgId,pid,actor.userId,[p.digest],cursor,limit)));
+});
 nativeProjectRoutes.post(`${root}/proposals/:proposal/verify`,async c=>{
   const actor=await orgActor(c,c.req.param('org'),['owner','developer']);const pid=c.req.param('pid'),svc=c.get('svc');const s=await nativeState(c,actor,pid);if(!s)throw notFound();
   const body=await readJson(c,Idempotent);const p=s.proposals.find(p=>p.id===c.req.param('proposal'));if(!p)throw notFound();
-  const url=nativeVerifierUrl(svc);
   const now=svc.nowIso();const proposedRequest:ScenarioVerificationRequest={protocolVersion:1,organizationId:actor.orgId,projectId:pid,runId:newId('run',12),envelopeDigest:p.digest,buildDigest:p.envelope.buildDigest,runtimeRecipeDigest:p.envelope.runtimeRecipeDigest,sourceHeads:p.envelope.sourceHeads,requiredScenarios:p.envelope.requiredScenarios.filter(q=>q.method==='automated'),issuedAt:now,expiresAt:new Date(Date.parse(now)+300000).toISOString()};
   const reserved=JSON.parse(await svc.ledger(actor.orgId).reserveNativeVerification(actor.orgId,pid,actor.userId,body.idempotencyKey,proposedRequest));
   if(reserved.result)return c.json(JSON.parse(reserved.result));
   const request=JSON.parse(reserved.request) as ScenarioVerificationRequest;
-  const response=await fetch(`${url.replace(/\/$/,'')}/verify`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(await signScenarioRequest(request,svc.jobKey())),signal:AbortSignal.timeout(125000),redirect:'manual'});
-  if(!response.ok)throw new ApiError(502,'verification_failed','runner refused verification');
-  const result=await verifyScenarioResult(await response.json(),svc.jobKey(),request);
+  let response:Response;
+  try { const url=nativeVerifierUrl(svc); response=await fetch(`${url.replace(/\/$/,'')}/verify`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(await signScenarioRequest(request,svc.jobKey())),signal:AbortSignal.timeout(125000),redirect:'manual'}); }
+  catch { return c.json(JSON.parse(await svc.ledger(actor.orgId).failNativeVerification(actor.orgId,pid,actor.userId,body.idempotencyKey,'transport_unavailable'))); }
+  if(!response.ok)return c.json(JSON.parse(await svc.ledger(actor.orgId).failNativeVerification(actor.orgId,pid,actor.userId,body.idempotencyKey,'transport_unavailable')));
+  let result;
+  try { result=await verifyScenarioResult(await response.json(),svc.jobKey(),request); }
+  catch { return c.json(JSON.parse(await svc.ledger(actor.orgId).failNativeVerification(actor.orgId,pid,actor.userId,body.idempotencyKey,'result_invalid'))); }
   return c.json(JSON.parse(await svc.ledger(actor.orgId).completeNativeVerification(actor.orgId,pid,actor.userId,body.idempotencyKey,result)));
 });
 

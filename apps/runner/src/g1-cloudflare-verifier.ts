@@ -1,3 +1,4 @@
+import { CandidateExecutionError, candidateErrorResults } from './g1-scenario-failure.js';
 /** Trusted scheduling harness against immutable Cloudflare release outputs in real workerd.
  * No cloud deploy, binding emulation, candidate tests, Node fallback or credentials. */
 import { spawn } from 'node:child_process';
@@ -37,8 +38,8 @@ export function cloudflareRuntimeRecipeDigest(recipe: BuildRecipe, environment: 
   return hashCanonicalSync({ domain: 'cf.project-runtime/1', recipe, environment });
 }
 export async function cloudflareSchedulingVerifierDigest(pin: CloudflareWorkerdPin, schema: string): Promise<string> {
-  return hashCanonicalSync({ domain: 'cf.cloudflare-scheduling-verifier/1', cases, binaryDigest: pin.sha256,
-    supervisorDigest: sha256HexSync(await readFile(new URL(import.meta.url))), schemaDigest: sha256HexSync(await readFile(schema)) });
+  return hashCanonicalSync({ domain: 'cf.cloudflare-scheduling-verifier/2', cases, binaryDigest: pin.sha256,
+    supervisorDigest: sha256HexSync(await readFile(new URL(import.meta.url))), failureSupervisorDigest: sha256HexSync(await readFile(new URL(`./g1-scenario-failure.${import.meta.url.endsWith('.ts')?'ts':'js'}`,import.meta.url))), schemaDigest: sha256HexSync(await readFile(schema)) });
 }
 
 function capnpText(value: string): string {
@@ -131,13 +132,15 @@ export async function verifyCloudflareBuiltScheduling(options: {
       '--proc', '/proc', '--dev', '/dev', '--tmpfs', '/tmp',
       '--ro-bind', join(scratch, 'workerd'), '/workerd', '--ro-bind', join(scratch, 'workerd.capnp'), '/candidate/workerd.capnp',
       '--ro-bind', join(scratch, 'worker.mjs'), '/candidate/worker.mjs', '--ro-bind', join(scratch, 'config.capnp'), '/candidate/config.capnp',
-      '--bind', join(scratch, 'socket'), '/scratch', '--chdir', '/candidate', '/workerd', 'serve', '/candidate/config.capnp'],
-    { env: { PATH: '/usr/bin:/bin', HOME: '/tmp', TZ: 'UTC' }, stdio: ['ignore', 'ignore', 'pipe'], detached: true });
-    let failure: Error | undefined;
+      '--bind', join(scratch, 'socket'), '/scratch', '--chdir', '/candidate', '/usr/bin/sh', '-c', 'printf \'SANDBOX_STARTED\\n\'; exec /workerd serve /candidate/config.capnp'],
+    { env: { PATH: '/usr/bin:/bin', HOME: '/tmp', TZ: 'UTC' }, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
+    let failure: Error | undefined; let sandboxStarted = false;
+    let startupOutput='';
+    child.stdout?.on('data', chunk => { startupOutput=(startupOutput+String(chunk)).slice(-1024); if(startupOutput.includes('SANDBOX_STARTED\n'))sandboxStarted=true; });
     child.once('error', e => { failure = e; });
     // Drain bounded diagnostics without exposing candidate-controlled logs or secrets in results.
     child.stderr?.on('data', () => {});
-    await waitForSocket(join(scratch, 'socket', 'preview.sock'), () => !!failure || child!.exitCode !== null || child!.signalCode !== null);
+    try { await waitForSocket(join(scratch, 'socket', 'preview.sock'), () => !!failure || child!.exitCode !== null || child!.signalCode !== null); } catch (error) { if (sandboxStarted) throw new CandidateExecutionError(); throw error; }
     const results: LocalScenarioResult[] = [];
     for (const [scenarioId, input, expected] of cases) {
       try {
@@ -149,6 +152,9 @@ export async function verifyCloudflareBuiltScheduling(options: {
     return { verifierDigest, runtimeRecipeDigest: cloudflareRuntimeRecipeDigest(recipe, environment), outputDigest: built.outputDigest,
       targetDigest: receipt.digest, execution: 'bubblewrap-linux-http', engine: 'workerd', engineDigest: pin.sha256,
       network: 'none', controlPlaneMounted: false, results };
+  } catch (error) {
+    if (!(error instanceof CandidateExecutionError)) throw error;
+    return { verifierDigest, runtimeRecipeDigest: cloudflareRuntimeRecipeDigest(recipe, environment), outputDigest: built.outputDigest, targetDigest: receipt.digest, execution: 'bubblewrap-linux-http', engine: 'workerd', engineDigest: pin.sha256, network: 'none', controlPlaneMounted: false, results: candidateErrorResults(cases.map(c => c[0])) };
   } finally {
     if (child?.pid) { try { process.kill(-child.pid, 'SIGKILL'); } catch { /* already exited */ }
       if (child.exitCode === null && child.signalCode === null) await new Promise<void>(resolve => child!.once('exit', () => resolve())); }

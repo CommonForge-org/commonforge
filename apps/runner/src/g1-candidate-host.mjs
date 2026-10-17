@@ -1,6 +1,7 @@
 // This file and candidate code execute together in a namespace with no control-plane mounts.
 import { createServer } from 'node:http';
-import worker from '/candidate/worker.mjs';
+process.stdout.write('SANDBOX_STARTED\n');
+const { default: worker } = await import('/candidate/worker.mjs');
 const server = createServer(async (req, res) => {
   try {
     const chunks = [];

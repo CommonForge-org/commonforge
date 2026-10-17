@@ -2,7 +2,7 @@
 import { createInterface as createLineReader } from "node:readline";
 import { createInterface } from "node:readline/promises";
 import { fileURLToPath } from "node:url";
-import { handoff, contextCommand, nativeCommand, propose, nativeResults } from "./native.js";
+import { handoff, contextCommand, nativeCommand, propose, nativeResults, renew } from "./native.js";
 import { checkout } from "./checkout.js";
 import { checkpoint } from "./checkpoint.js";
 import type { CommandContext } from "./command.js";
@@ -27,6 +27,7 @@ Usage: cforge <command> [options]
 
   login --email <addr> | --code <code>   sign in (CLI code flow); the session is stored 0600 in the config dir
   logout | whoami
+  renew --code <replacement> --out <new> renew task authority into a fresh verified checkout
   handoff --code <code>                 exchange one-time task authority (no broad user session)
   results <taskId>                      inspect this attempt’s proposal, evidence and decision history
   propose <taskId>                      integrate submitted candidates, then freeze exact project review
@@ -58,6 +59,7 @@ const COMMANDS: Record<string, Handler> = {
   task,
   checkout,
   handoff,
+  renew,
   context: contextCommand,
   native: nativeCommand,
   propose,
