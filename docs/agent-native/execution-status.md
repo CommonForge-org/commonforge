@@ -317,7 +317,7 @@ Final verification after recovery integration:
 | Packaged real-local | pass, actual API/Git/runner/R2/preview, four browser journeys and exact canonical recovery/namespace check; `.g1-artifacts/native-recovery-real-local-final.log` |
 
 Continuation implementation before recovery was committed as `98c4f57`. Recovery code and its
-updated evidence are recorded by the next local implementation commit. Full G1 remains **not achieved**:
+updated evidence were committed as `678970c` (`Add verified historical source recovery under current project requirements`). Full G1 remains **not achieved**:
 AN-21 requires authorized isolated remote Cloudflare release, observation, freshness expiry and recovery.
 The HTTPS/workerd supervisor is locally executable and verified for its bounded shape; deployment
 infrastructure/credentials/target authorization remain unspecified. The user clarification is pending.
@@ -333,3 +333,5 @@ and mount-reservation retention; one bundled vars-only workerd target. These mus
 remote supervisor/provider integration and AN-21's release/observe/expire/recover sequence. Reassess
 any unfulfilled local contract before claiming G1 complete. Do not proceed to M6–M8. The goal remains
 active; all work in this continuation stayed within G1.
+
+Final continuation commits: `98c4f57` (native onboarding/workerd/authority), `678970c` (usable historical recovery), followed by this documentation-only revision record. No push/publication. Working tree clean after the revision-record commit. Goal remains active pending the remaining G1 live gate and any subsequent completion-audit findings.
