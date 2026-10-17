@@ -22,6 +22,7 @@ describe('dedicated G1 cloud rehearsal preparation',()=>{
   const c=cloudRehearsalContracts(config);expect(c.environment).toEqual({targets:c.policy.release.targets,environment:c.policy.release.environment,healthCheck:c.policy.release.healthCheck,accountId:config.accountId});
   expect(c.policy.release.migrations).toEqual([]);expect(c.policy.release.targets).toHaveLength(1);expect(c.environment.environment.api).toEqual({vars:{APP_VERSION:'g1-synthetic-scheduling'},kvNamespaces:[]});
  });
+ // Two real builds and isolated workerd executions exceed the default 5 s on CI hosts.
  it('builds both actual deployable source variants and executes all nine scenarios in pinned isolated workerd',async()=>{
   const c=cloudRehearsalContracts(config),adapter=await createCloudflareSchedulingAdapter({pin,schema:config.schema,recipe:c.recipe,environment:c.environment});
   const revisions=[];
@@ -31,7 +32,7 @@ describe('dedicated G1 cloud rehearsal preparation',()=>{
    expect(result.results).toHaveLength(9);expect(result.results.every(r=>r.result==='pass')).toBe(true);expect(result.network).toBe('none');expect(result.controlPlaneMounted).toBe(false);revisions.push(canonicalJson(files));
   }
   expect(revisions[0]).not.toBe(revisions[1]);
- });
+ },30_000);
 });
 
 async function localSource() {
