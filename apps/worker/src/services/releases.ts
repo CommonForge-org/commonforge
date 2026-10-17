@@ -39,6 +39,8 @@ import type { StagingPolicy } from "./staging-policy.js";
 import { RESULT_GRACE_MS } from "./runner-jobs.js";
 import { enqueueStep, onStep, onStepFailed } from "./steps.js";
 
+import { assertNativeRelease, nativeBindingStatement, nativeReleaseState, prepareNativeReleaseBinding, presentNativeRelease, recordNativeReleaseHealth, type NativeReleaseBinding } from "./native-release.js";
+
 export type ReleaseChannel = "production" | "staging";
 
 export type ReleaseState = "not_requested" | "prepared" | "publish_approved" | "deploying" | "health_verification" | "live" | "failed" | "partial" | "recovery_required";
@@ -206,12 +208,13 @@ export async function prepareRelease(svc: Services, actor: ReleaseActor, project
   const environment: ReleaseEnvironment = { targets: policy.targets, environment: productionEnvironment(policy), healthCheck: policy.healthCheck, accountId, ...(policy.migrations.length > 0 ? { migrations: policy.migrations } : {}) };
   const envDigest = configDigest(environment); // = what insertReleaseAndBuild stores as env_digest
   const sourceMap = Object.fromEntries(sources.map((s) => [s.resourceId, s.revisionId]));
-  const identityKey = await sha256Hex(canonicalJson({ projectId, acceptedVersionId: latest.acceptedVersionId, sources: sourceMap, recipe: policy.recipe, envDigest }));
+  const nativeBinding = await prepareNativeReleaseBinding(svc, actor.orgId, projectId, sourceMap, policy.recipe, environment);
+  const identityKey = await sha256Hex(canonicalJson({ projectId, acceptedVersionId: latest.acceptedVersionId, sources: sourceMap, recipe: policy.recipe, envDigest, ...(nativeBinding ? {manifestHash:nativeBinding.manifestHash} : {}) }));
   const existing = await svc.db
     .prepare("SELECT * FROM releases WHERE org_id = ? AND identity_key = ? AND build_state != 'failed' ORDER BY created_at DESC LIMIT 1")
     .bind(actor.orgId, identityKey)
     .first<ReleaseRow>();
-  if (existing) return { release: existing, created: false };
+  if (existing) { await assertNativeRelease(svc,existing); return { release: existing, created: false }; }
 
   const { releaseId, jobId } = await insertReleaseAndBuild(svc, {
     orgId: actor.orgId,
@@ -226,6 +229,7 @@ export async function prepareRelease(svc: Services, actor: ReleaseActor, project
     environmentRecord: environment,
     policyRevision: project.policy_revision,
     identityKey,
+    nativeBinding,
   });
   await recordReleaseEvent(svc, "production", { orgId: actor.orgId, projectId, actor: actorRef(actor), action: "release.prepare_requested", subjectKind: "release", subjectId: releaseId, resourceIds: [...ids], detail: { acceptedVersionId: latest.acceptedVersionId, recipeRevision: policy.recipe.revision, envDigest, jobId }, clientVisible: true, clientDetail: { acceptedVersionId: latest.acceptedVersionId } });
   return { release: (await getRelease(svc, actor.orgId, releaseId))!, created: true };
@@ -249,17 +253,18 @@ async function insertReleaseAndBuild(
     environmentRecord: ReleaseEnvironment;
     policyRevision: number;
     identityKey: string;
+    nativeBinding?: NativeReleaseBinding | null;
   },
 ): Promise<{ releaseId: string; jobId: string }> {
   const releaseId = newId("rel", 12);
   const now = svc.nowIso();
   const sourceMap = Object.fromEntries(r.sources.map((s) => [s.resourceId, s.revisionId]));
-  await svc.db
+  const insert = svc.db
     .prepare(
       "INSERT INTO releases (release_id, org_id, project_id, accepted_version_id, sources_json, recipe_json, recipe_revision, policy_revision, environment_json, env_digest, identity_key, state, build_state, channel, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'not_requested', 'building', ?, ?, ?, ?)",
     )
-    .bind(releaseId, r.orgId, r.projectId, r.acceptedVersionId, JSON.stringify(sourceMap), JSON.stringify(r.recipe), r.recipe.revision, r.policyRevision, JSON.stringify(r.environmentRecord), configDigest(r.environmentRecord), r.identityKey, r.channel, r.userId, now, now)
-    .run();
+    .bind(releaseId, r.orgId, r.projectId, r.acceptedVersionId, JSON.stringify(sourceMap), JSON.stringify(r.recipe), r.recipe.revision, r.policyRevision, JSON.stringify(r.environmentRecord), configDigest(r.environmentRecord), r.identityKey, r.channel, r.userId, now, now);
+  await svc.db.batch([insert,...(r.nativeBinding ? [nativeBindingStatement(svc,releaseId,r.orgId,r.projectId,r.nativeBinding)] : [])]);
   const job = await issueJob(
     svc,
     {
@@ -373,6 +378,7 @@ async function publishRoles(svc: Services, orgId: string, projectId: string): Pr
 
 /** Step 3: the publish approval, a separate record bound to the exact output. */
 export async function approvePublish(svc: Services, actor: { orgId: string; userId: string; role: Role }, rel: ReleaseRow, body: { outputDigest: string }) {
+  await assertNativeRelease(svc,rel);
   if (rel.channel === "staging") throw conflict("staging_release", "staging deploys need no publish approval; this release deploys to staging only");
   const roles = await publishRoles(svc, actor.orgId, rel.project_id);
   if (!roles.includes(actor.role)) throw forbidden("publish_role_not_allowed", `publishing needs approval from: ${roles.join(", ")}`);
@@ -655,6 +661,7 @@ export async function markRecovered(svc: Services, actor: { orgId: string; userI
 
 /** Step 4: deploy (or retry the same release). Idempotent per key; one deploy per project in flight (review I-4). */
 export async function deployRelease(svc: Services, actor: ReleaseActor, rel: ReleaseRow, idempotencyKey: string, opts: { skipApproval?: boolean } = {}): Promise<{ releaseId: string; jobId: string; attempt: number; replayed: boolean }> {
+  await assertNativeRelease(svc,rel);
   const prior = await svc.db
     .prepare("SELECT release_id, attempt, job_id FROM release_deploy_requests WHERE org_id = ? AND idempotency_key = ?")
     .bind(actor.orgId, idempotencyKey)
@@ -670,6 +677,7 @@ export async function deployRelease(svc: Services, actor: ReleaseActor, rel: Rel
   if (rel.state === "live") throw conflict("already_live", "this release is already live");
   if (!svc.env.COMMONFORGE_DEPLOY_API_TOKEN) throw new ApiError(503, "config_missing", "COMMONFORGE_DEPLOY_API_TOKEN is not configured");
   await assertReleaseAllowed(svc, rel);
+  await assertNativeRelease(svc,rel);
   const body = deployJobFor(rel);
 
   // claim the deploy first (CAS on the state), so two requests can never start two deploys, and no
@@ -832,6 +840,7 @@ export async function checkReleaseHealth(svc: Services, orgId: string, releaseId
   const targets = await observeHealth(svc, rel, receipt);
   const ok = targets.length > 0 && targets.every((t) => t.ok);
   const health = { attempt, checkedAt: svc.nowIso(), ok, targets };
+  await recordNativeReleaseHealth(svc,rel,health);
   if (!ok && attempt < HEALTH_ATTEMPTS) {
     await svc.db.prepare("UPDATE releases SET health_json = ?, updated_at = ? WHERE release_id = ?").bind(JSON.stringify(health), svc.nowIso(), rel.release_id).run();
     return { retry: true, delaySeconds: Math.min(30, 2 * attempt), reason: "the deployed service does not report this release yet" };
@@ -900,8 +909,9 @@ async function failHealth(svc: Services, rel: ReleaseRow, health: unknown): Prom
 async function startRecovery(svc: Services, rel: ReleaseRow, fromState: ReleaseState, code: string, why: string, extra: { health_json?: string; error?: string } = {}, detail: Record<string, unknown> = {}): Promise<void> {
   const resources = Object.keys(JSON.parse(rel.sources_json) as object);
   const prev = rel.previous_release_id ? await getRelease(svc, rel.org_id, rel.previous_release_id) : null;
-  const canRollback = !!prev && !!prev.build_receipt_json && !!prev.output_digest;
-  const message = canRollback ? `${why}; rolling back to ${prev!.release_id}` : `${why}, and there is no previous release to roll back to: production may run this release unverified`;
+  const native = await nativeReleaseState(svc,rel.org_id,rel.project_id);
+  const canRollback = !native && !!prev && !!prev.build_receipt_json && !!prev.output_digest;
+  const message = native ? `${why}; explicit recovery under current project requirements is required; external effects are not reverted automatically` : canRollback ? `${why}; rolling back to ${prev!.release_id}` : `${why}, and there is no previous release to roll back to: production may run this release unverified`;
   const moved = await svc.db
     .prepare(`UPDATE releases SET state = 'recovery_required', rollback_state = ?, error_code = ?, error = ?, health_json = COALESCE(?, health_json), updated_at = ? WHERE release_id = ? AND state = ?`)
     .bind(canRollback ? "running" : null, code, extra.error ? `${message}\n${extra.error}`.slice(0, 4000) : message, extra.health_json ?? null, svc.nowIso(), rel.release_id, fromState)
@@ -1029,6 +1039,7 @@ export async function presentRelease(svc: Services, rel: ReleaseRow, developer: 
   return {
     releaseId: rel.release_id,
     projectId: rel.project_id,
+    ...(await presentNativeRelease(svc,rel)),
     acceptedVersionId: rel.accepted_version_id,
     recipeRevision: rel.recipe_revision,
     envDigest: rel.env_digest,

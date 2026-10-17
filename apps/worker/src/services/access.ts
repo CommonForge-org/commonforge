@@ -174,6 +174,7 @@ export async function setProjectAccess(svc: Services, actor: OrgActor, projectId
 
   // shared folders: never below the level the person's other projects give them (capped by role)
   const floors = floorsOf(await otherProjectGrants(svc, actor.orgId, projectId, change.userId), role);
+  if (change.level !== "write" || Object.values(exceptions).some(level => level !== "write")) await svc.ledger(actor.orgId).revokeNativeAuthority(actor.orgId, change.userId);
   const now = svc.nowIso();
   const writes: Array<{ kind: "project" | "resource"; id: string; ops: Operation[] }> = [];
   const want = (kind: "project" | "resource", id: string, level: Level) => {

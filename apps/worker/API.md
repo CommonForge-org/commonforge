@@ -1873,3 +1873,51 @@ and prints the manual Email Service steps (item 5); `scripts/teardown.sh` remove
      `COMMONFORGE_DEPLOY_API_TOKEN` a dedicated token with *Workers Scripts: Edit* and *Workers KV
      Storage: Edit* (it creates the org KV namespaces) on the deploy account. Install each with
      `cd apps/worker && pnpm exec wrangler secret put <NAME>`, then roll the broad dev token.
+
+## Agent-native project protocol 1 (G1)
+
+Existing projects retain legacy behavior. Owner/developer routes require access to every project
+source; incomplete required context refuses without describing hidden dependencies. Records reside in
+OrgLedger. D1 indexes do not authorize native acceptance.
+
+- `GET /api/orgs/:org/projects/:pid/native` → `{protocolVersion:1,state:null|ProjectState}`.
+- `POST …/native/enable {idempotencyKey}`: owner-only, permanent, settled legacy work and exclusive
+  source membership required. Genesis source has no retroactive behavioral evidence.
+- `POST …/native/commands`: strict `ProjectCommandSchema`, `expectedGeneration`, `idempotencyKey`.
+  Knowledge/outcome/scenario drafts, confirmations, corrections, exact decisions, manual observations,
+  and acceptance. Server checks current authority again inside acceptance. Public callers cannot
+  provide runner provenance or create their own mandates/attempts.
+- `GET …/native/{outcomes,knowledge,scenarios,proposals,decisions,evidence,manifests,observations,attempts}`
+  supports `cursor` offset and `limit` ≤100, returning `{items,nextCursor,generation}`.
+- `POST /api/tasks/:id/native/handoff {agentId}` issues a code (15-minute exchange window); only a
+  person can issue it. Replacement revokes previous mandates for that task.
+- `POST /api/auth/task/verify {code}` consumes it once and returns a task lease, attempt, one-hour
+  mandate and materialized context. It creates no user session.
+- `GET /api/tasks/:id/native/context` returns pinned JSON/Markdown/digest plus current generation and
+  a separate `knowledgeStale` flag. `GET …/native/results` exposes only the token's own attempt.
+- `POST …/native/commands` permits scoped draft corrections and knowledge-only proposal submission. Source envelopes use
+  `native/proposals`, which also verifies the inner artifact proposal belongs to this exact task.
+- `POST …/native/submit {}` prepares the task's candidates and queues/joins actual artifact integration.
+- `POST …/native/proposals {innerProposalId,expectedGeneration,idempotencyKey,outcome?}` freezes the
+  outer source envelope after exact integration. All required scenarios come from confirmed state.
+- `POST /api/orgs/:org/projects/:pid/native/proposals/:proposal/verify {idempotencyKey}` calls the
+  configured loopback signed supervisor. Requests/results use explicit protocol 1; unsupported
+  runtime/verifier/set/signature/subject fails closed. Job budgets and result ingestion are durable.
+- `PUT|GET|DELETE …/native/attachments/:sha256`: ≤1 MiB digest-checked project evidence bytes. DELETE
+  refuses every referenced historical payload; tombstones serialize against evidence registration.
+- `GET …/native/bundle?includePayloads=1` exports validated history and retained evidence bytes with
+  explicit source/attachment completeness. `POST /api/orgs/:org/native/import
+  {name,idempotencyKey,bundle}` creates fresh local authority, draft knowledge and an untrusted archive;
+  it does not restore Git or authorize imported evidence. Export again returns the original archive.
+
+Source acceptance invokes existing `planCommit` checks and writes artifact heads plus project manifest
+in the same SQLite transaction. Native source locks also block legacy queue acceptance, restore and
+head adoption. Source membership/staging mutations are unsupported after enablement. Native release
+preparation/publish/deploy require a manifest mapping and matching runtime; legacy-prepared releases
+cannot bypass it. See `docs/agent-native/release-rehearsal.md` for the unverified live gate.
+
+Stable refusal codes include `revision_conflict`, `knowledge_stale`, `context_too_large`,
+`context_forbidden`, `mandate_revoked`, `mandate_expired`, `mandate_scope_denied`,
+`scenario_evidence_missing`, `scenario_evidence_invalid`, `review_subject_changed`,
+`project_mode_unsupported`, `authority_denied`, `idempotency_conflict`, `unsupported_version`,
+`recovery_unsupported` and `bundle_invalid`. Historical passes are immutable; applicability is computed.

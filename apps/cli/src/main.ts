@@ -2,6 +2,7 @@
 import { createInterface as createLineReader } from "node:readline";
 import { createInterface } from "node:readline/promises";
 import { fileURLToPath } from "node:url";
+import { handoff, contextCommand, nativeCommand, propose, nativeResults } from "./native.js";
 import { checkout } from "./checkout.js";
 import { checkpoint } from "./checkpoint.js";
 import type { CommandContext } from "./command.js";
@@ -26,6 +27,11 @@ Usage: cforge <command> [options]
 
   login --email <addr> | --code <code>   sign in (CLI code flow); the session is stored 0600 in the config dir
   logout | whoami
+  handoff --code <code>                 exchange one-time task authority (no broad user session)
+  results <taskId>                      inspect this attempt’s proposal, evidence and decision history
+  propose <taskId>                      integrate submitted candidates, then freeze exact project review
+  context <taskId> [--out <workspace>]   inspect and export pinned project understanding
+  native <taskId> --command <JSON>       propose knowledge or an exact project change
   project list | show <projectId> | tasks <projectId>
   task create <projectId> --title <t> [--request <text>] [--write <mount>...] | lease <taskId> | release <taskId>
   checkout <taskId> <dir>                materialize a task workspace (verified); git uses the credential helper
@@ -51,6 +57,11 @@ const COMMANDS: Record<string, Handler> = {
   project,
   task,
   checkout,
+  handoff,
+  context: contextCommand,
+  native: nativeCommand,
+  propose,
+  results: nativeResults,
   status,
   checkpoint,
   submit,

@@ -4,12 +4,14 @@
  * (`POST /api/tasks/:id/workspaces/:ws/freeze {expectedSha}`), which revokes the write tokens and
  * records the candidate. Every push happens before any freeze, so a failed push freezes nothing.
  */
-import { resolve } from "node:path";
-import { normalizeApiUrl, taskClient } from "./api.js";
+import { join, resolve } from "node:path";
+import { stat } from "node:fs/promises";
+import { agentClient, normalizeApiUrl, taskClient } from "./api.js";
 import { list, parse, str, type CommandContext } from "./command.js";
 import { CliError } from "./context.js";
 import { commitAll } from "./checkpoint.js";
 import { gitOk, pushOneRef, type GitRunner } from "./git.js";
+import { checkPinnedNativeContext, fetchNativeContext } from "./native.js";
 import { pickWritableMounts, resolveWorkspace } from "./workspace.js";
 
 const USAGE = "cforge submit [--mount <name>]... [--commit <message>] [--tool <name>] [--workspace <dir>] [--json]";
@@ -40,6 +42,12 @@ export async function submit(ctx: CommandContext, args: readonly string[]): Prom
   const mounts = pickWritableMounts(ws, explicit);
   const taskId = ws.record.taskId;
 
+  const nativeStored = await stat(join(ctx.store.dir, "native", `${taskId}.json`)).then(() => true, () => false) || await stat(join(ws.root, ".commonforge", "attempt.json")).then(() => true, () => false);
+  const api = nativeStored ? await agentClient(ctx.io, ctx.store, taskId, normalizeApiUrl(ws.record.apiUrl)) : await taskClient(ctx.io, ctx.store, taskId, normalizeApiUrl(ws.record.apiUrl), (l) => ctx.out.warn(l));
+  const task = await api.get<{ projectProtocolVersion?: number }>(`/api/tasks/${encodeURIComponent(taskId)}`);
+  if (nativeStored && task.projectProtocolVersion !== 1 || task.projectProtocolVersion !== undefined && task.projectProtocolVersion !== 1) throw new CliError("unsupported_version", "unsupported project protocol");
+  if (task.projectProtocolVersion === 1) await checkPinnedNativeContext(ws.root, await fetchNativeContext(api, taskId));
+
   const pushed: Array<{ mountName: string; taskWorkspaceId: string; sha: string; ref: string; committed: boolean }> = [];
   const skipped: string[] = [];
   for (const m of mounts) {
@@ -60,7 +68,6 @@ export async function submit(ctx: CommandContext, args: readonly string[]): Prom
   }
   if (pushed.length === 0) throw new CliError("nothing_to_submit", `no writable mount has commits beyond its base (${skipped.join(", ") || "none"}); commit first or pass --mount`);
 
-  const api = await taskClient(ctx.io, ctx.store, taskId, normalizeApiUrl(ws.record.apiUrl), (l) => ctx.out.warn(l));
   const candidates: Array<Candidate & { mountName: string; ref: string }> = [];
   const summary = () => candidates.map((c) => ({ mountName: c.mountName, candidateId: c.candidateId, taskWorkspaceId: c.taskWorkspaceId, sha: c.sha, changedPaths: c.changedPaths, state: c.state }));
   for (const x of pushed) {

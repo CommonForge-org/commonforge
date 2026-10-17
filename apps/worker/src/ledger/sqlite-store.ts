@@ -157,6 +157,69 @@ export class SqliteLedgerTx implements LedgerTx {
     return this.sql.exec<Row>(query, ...bindings).toArray();
   }
 
+  /** Versioned project aggregate, read and written in the same transaction as artifact heads. */
+  getNativeProjectJson(projectId: string): string | null {
+    const r = this.rows('SELECT json FROM native_projects WHERE project_id = ?', projectId)[0];
+    return r ? str(r.json) : null;
+  }
+
+  listNativeProjectJson(): string[] {
+    return this.rows('SELECT json FROM native_projects ORDER BY project_id LIMIT 1000').map(r => str(r.json));
+  }
+
+  putNativeProjectJson(projectId: string, organizationId: string, generation: number, value: string): void {
+    this.sql.exec(`INSERT INTO native_projects (project_id, organization_id, generation, json) VALUES (?, ?, ?, ?)
+      ON CONFLICT(project_id) DO UPDATE SET generation = excluded.generation, json = excluded.json`, projectId, organizationId, generation, value);
+  }
+
+  nativeResourceProject(resourceId: string): string | null {
+    const r = this.rows('SELECT project_id FROM native_resource_locks WHERE resource_id = ?', resourceId)[0];
+    return r ? str(r.project_id) : null;
+  }
+
+  lockNativeResource(resourceId: string, projectId: string): void {
+    this.sql.exec('INSERT INTO native_resource_locks (resource_id, project_id) VALUES (?, ?)', resourceId, projectId);
+  }
+
+  getNativeHandoff(hash: string, token = false): string | null {
+    const r = this.rows(`SELECT json FROM native_handoffs WHERE ${token ? 'token_hash' : 'code_hash'} = ?`,hash)[0];
+    return r ? str(r.json) : null;
+  }
+
+  putNativeHandoff(codeHash:string, tokenHash:string|null, projectId:string, value:string):void {
+    this.sql.exec(`INSERT INTO native_handoffs (code_hash,token_hash,project_id,json) VALUES (?,?,?,?) ON CONFLICT(code_hash) DO UPDATE SET token_hash=excluded.token_hash,json=excluded.json`,codeHash,tokenHash,projectId,value);
+  }
+
+  // Native payload registry: transaction-only metadata, bytes remain in scoped R2.
+  nativePayload(projectId:string,digest:string):{digest:string;size:number;mediaType:string;state:'active'|'deleted'}|null {
+    const r=this.rows('SELECT digest,size,media_type,state FROM native_payloads WHERE project_id=? AND digest=?',projectId,digest)[0];
+    return r?{digest:str(r.digest),size:num(r.size),mediaType:str(r.media_type),state:str(r.state) as 'active'|'deleted'}:null;
+  }
+  putNativePayload(projectId:string,digest:string,size:number,mediaType:string):void {
+    this.sql.exec("INSERT INTO native_payloads (project_id,digest,size,media_type,state) VALUES (?,?,?,?,'active')",projectId,digest,size,mediaType);
+  }
+  tombstoneNativePayload(projectId:string,digest:string):void {
+    this.sql.exec("INSERT INTO native_payloads (project_id,digest,size,media_type,state) VALUES (?,?,0,'application/octet-stream','deleted') ON CONFLICT(project_id,digest) DO UPDATE SET state='deleted'",projectId,digest);
+  }
+  // End native payload registry.
+
+  nativeJob(projectId:string,key:string):{request:string;result:string|null}|null {
+    const r=this.rows('SELECT request_json,result_json FROM native_jobs WHERE project_id=? AND idempotency_key=?',projectId,key)[0];
+    return r?{request:str(r.request_json),result:r.result_json===null?null:str(r.result_json)}:null;
+  }
+  nativeJobCount(projectId:string,envelopeDigest:string):number {
+    return num(this.rows("SELECT count(*) AS n FROM native_jobs WHERE project_id=? AND json_extract(request_json,'$.envelopeDigest')=?",projectId,envelopeDigest)[0]!.n);
+  }
+  putNativeJob(projectId:string,key:string,request:string,result:string|null):void {
+    this.sql.exec('INSERT INTO native_jobs (project_id,idempotency_key,request_json,result_json) VALUES (?,?,?,?) ON CONFLICT(project_id,idempotency_key) DO UPDATE SET result_json=excluded.result_json',projectId,key,request,result);
+  }
+  putNativeArchive(projectId:string,digest:string,value:string):void {
+    this.sql.exec('INSERT INTO native_archives (project_id,digest,json) VALUES (?,?,?)',projectId,digest,value);
+  }
+  getNativeArchive(projectId:string):string|null {
+    const r=this.rows('SELECT json FROM native_archives WHERE project_id=?',projectId)[0];return r?str(r.json):null;
+  }
+
   // ---------------------------------------------------------------- LedgerTx (§A.4)
 
   getHead(resourceId: string): AcceptedHead | null {

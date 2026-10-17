@@ -29,6 +29,7 @@ import {
   loginCommand,
   mayRunAgent,
   submitCommand,
+  shellWord,
   taskFolders,
   type HandoffTask,
 } from "../lib/handoff.js";
@@ -63,7 +64,7 @@ export function useHandoffContext(role: Role, staging: boolean): HandoffContext 
 }
 
 export function handoffTask(task: Pick<TaskView, "taskId" | "title" | "request" | "workspaces" | "snapshot"> & Partial<Pick<TaskView, "lease">>): HandoffTask {
-  return { taskId: task.taskId, title: task.title, request: task.request ?? "", ...taskFolders(task), ...(task.lease ? { lease: task.lease } : {}) };
+  return { ...((task as { projectProtocolVersion?: number }).projectProtocolVersion ? { projectProtocolVersion: (task as { projectProtocolVersion?: number }).projectProtocolVersion } : {}), taskId: task.taskId, title: task.title, request: task.request ?? "", ...taskFolders(task), ...(task.lease ? { lease: task.lease } : {}) };
 }
 
 /** A command (or several lines) with its copy button. */
@@ -152,6 +153,9 @@ function CopyPrompt({ task, ctx }: { task: HandoffTask; ctx: HandoffContext }) {
 }
 
 export function AgentHandoff({ task, ctx, ownTask = true, onDone, intro }: { task: HandoffTask; ctx: HandoffContext; ownTask?: boolean; onDone: () => void; intro?: string }) {
+  const projectProtocol = (task as HandoffTask & { projectProtocolVersion?: number }).projectProtocolVersion;
+  if (projectProtocol !== undefined && projectProtocol !== 1) return <p role="alert">This project requires an unsupported agent protocol. Update CommonForge before assigning an agent.</p>;
+  if (projectProtocol === 1) return <NativeAgentHandoff task={task} ctx={ctx} onDone={onDone} />;
   const dir = checkoutDir(task.title);
   const canRun = mayRunAgent(ctx.role, { staging: ctx.staging, ownTask });
   const client = !isDeveloperRole(ctx.role);
@@ -281,4 +285,25 @@ export function TaskHandoffLoader({ taskId, ctx, load, ownTask = true, onDone }:
     );
   if (!task) return <Loading what="Loading the task" />;
   return <AgentHandoff task={handoffTask(task)} ctx={ctx} ownTask={ownTask} onDone={onDone} />;
+}
+
+
+/** Native projects exchange one-use task authority; never create a broad CLI session. */
+function NativeAgentHandoff({ task, ctx, onDone }: { task: HandoffTask; ctx: HandoffContext; onDone: () => void }) {
+  const [agentId, setAgentId] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>(null);
+  const [copied, setCopied] = useState(false);
+  const dir = checkoutDir(task.title);
+  const copy = () => {
+    setBusy(true); setError(null);
+    const prompt = fetch(`/api/tasks/${encodeURIComponent(task.taskId)}/native/handoff`, { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ agentId }) }).then(async res => {
+      const body = await res.json() as { code?: string; error?: { code: string; message: string } };
+      if (!res.ok || !body.code) throw new ApiError(res.status, body.error?.code ?? 'handoff_failed', body.error?.message ?? 'Task handoff could not be issued.');
+      const safe = (value: string) => { const word = shellWord(value); if (!word) throw new Error('The handoff contains an unsupported command value.'); return word; };
+      return `Work on CommonForge task ${task.taskId}: ${task.title}\n${task.request}\n\nUse only the task-scoped handoff below. Build cforge from the public CommonForge source if unavailable.\n${CLI_SOURCE_INSTALL}\n\ncforge handoff --api-url ${safe(ctx.apiUrl)} --code ${safe(body.code)}\ncforge checkout ${safe(task.taskId)} ${safe(dir)}\ncforge context ${safe(task.taskId)} --out ${safe(dir)}\n\nRead ${dir}/.commonforge/context.md and context.json before editing. Preserve confirmed rules and their corrections. Do not edit .commonforge files. Implement only the assigned task, then run applicable checks and cforge submit from the checkout. Propose corrections through structured native commands; human confirmation, acceptance and release are separate authority. No provider credentials or broad user login are required.`;
+    });
+    void copyLater(prompt).then(() => setCopied(true), e => setError(e)).finally(() => setBusy(false));
+  };
+  return <section className="handoff" aria-label="Give this task to your agent"><h3>Task-scoped agent handoff</h3><p>{task.title}</p><p>The agent receives this task's source access and pinned project understanding. It cannot confirm rules, accept changes or deploy.</p><label className="field">Agent or client identity <input type="text" required maxLength={128} value={agentId} onChange={e => { setAgentId(e.target.value); setCopied(false); }} placeholder="For example, Codex session 2" /></label><button type="button" className="btn btn-primary" disabled={busy || !agentId.trim()} onClick={copy}>{busy ? 'Preparing…' : 'Copy scoped task prompt'}</button><p role="status">{copied ? 'Copied. This handoff code works once within 15 minutes. Task authority expires after one hour unless renewed.' : 'The copied prompt includes a one-use task code. It does not sign the agent in as you.'}</p>{error ? <p role="alert">{errorMessage(error, true)}</p> : null}<button type="button" className="btn btn-outline" onClick={onDone}>Done</button></section>;
 }

@@ -204,6 +204,20 @@ export const MIGRATIONS: readonly Migration[] = [
          )`,
     ],
   },
+  {
+    id: 4,
+    name: 'agent-native-projects',
+    statements: [
+      `CREATE TABLE native_projects (project_id TEXT PRIMARY KEY, organization_id TEXT NOT NULL, generation INTEGER NOT NULL, json TEXT NOT NULL)`,
+      `CREATE TABLE native_resource_locks (resource_id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES native_projects(project_id))`,
+      `CREATE TABLE native_handoffs (code_hash TEXT PRIMARY KEY, token_hash TEXT UNIQUE, project_id TEXT NOT NULL, json TEXT NOT NULL)`,
+      `CREATE TABLE native_jobs (project_id TEXT NOT NULL, idempotency_key TEXT NOT NULL, request_json TEXT NOT NULL, result_json TEXT, PRIMARY KEY(project_id,idempotency_key))`,
+      `CREATE TABLE native_archives (project_id TEXT PRIMARY KEY, digest TEXT NOT NULL, json TEXT NOT NULL)`,
+      `CREATE TABLE native_payloads (project_id TEXT NOT NULL, digest TEXT NOT NULL, size INTEGER NOT NULL, media_type TEXT NOT NULL, state TEXT NOT NULL CHECK (state IN ('active','deleted')), PRIMARY KEY(project_id,digest))`,
+      `CREATE TRIGGER native_locks_no_update BEFORE UPDATE ON native_resource_locks BEGIN SELECT RAISE(ABORT, 'native resource ownership is permanent'); END`,
+      `CREATE TRIGGER native_locks_no_delete BEFORE DELETE ON native_resource_locks BEGIN SELECT RAISE(ABORT, 'native resource ownership is permanent'); END`,
+    ],
+  },
 ];
 
 /** Tables created by the migrations (tests assert they exist). */
@@ -225,6 +239,12 @@ export const LEDGER_TABLES = [
   'workspaces',
   'consumed_events',
   'ref_state',
+  'native_projects',
+  'native_resource_locks',
+  'native_handoffs',
+  'native_jobs',
+  'native_archives',
+  'native_payloads',
 ] as const;
 
 /**

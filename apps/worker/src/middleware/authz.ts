@@ -16,10 +16,10 @@
  * - Policy (checks, approval roles) comes from the server-owned project policy, never from files in
  *   a repository or candidate (AT-18/AT-38).
  */
-import type { Operation } from "@commonforge-org/core";
+import { sha256HexSync, type Operation } from "@commonforge-org/core";
 import type { Context, MiddlewareHandler } from "hono";
 import type { AppEnv, Principal, Services } from "../context.js";
-import { forbidden, notFound, unauthorized } from "../lib/http.js";
+import { ApiError, forbidden, notFound, unauthorized } from "../lib/http.js";
 import { resolveLease, resolveSession } from "../services/auth.js";
 import {
   getMount,
@@ -78,6 +78,13 @@ export function authenticate(): MiddlewareHandler<AppEnv> {
     } else if (token?.startsWith("cfl_")) {
       const lease = await resolveLease(svc, token);
       if (lease) {
+        const taskProject = await svc.db.prepare('SELECT project_id FROM tasks WHERE task_id=?').bind(lease.task_id).first<{project_id:string}>();
+        const nativeState = taskProject ? await svc.ledger(lease.org_id).getNativeProject(taskProject.project_id) : null;
+        const nativeValue = nativeState && taskProject ? await svc.ledger(lease.org_id).resolveNativeToken(taskProject.project_id,sha256HexSync(token)) : null;
+        // Old lease issuance must never bypass a native project's mandate.
+        if (nativeState && !nativeValue) { c.set('principal',null); return next(); }
+        const native = nativeValue ? JSON.parse(nativeValue) as {agentId:string;attemptId:string;mandateId:string;knowledgeStale:boolean} : null;
+        if(native?.knowledgeStale && c.req.method!=='GET' && /\/(?:freeze|credential|materialization|submit|proposals|commands)(?:\/|$)/.test(new URL(c.req.url).pathname)) throw new ApiError(409,'knowledge_stale','confirmed project requirements changed; request a fresh task handoff');
         principal = {
           kind: "agent",
           taskId: lease.task_id,
@@ -85,6 +92,7 @@ export function authenticate(): MiddlewareHandler<AppEnv> {
           leaseGeneration: lease.lease_generation,
           leaseExpiresAt: lease.lease_expires_at,
           holderUserId: lease.lease_holder,
+          ...(native && taskProject ? {native:{...native,projectId:taskProject.project_id,tokenHash:sha256HexSync(token)}} : {}),
         };
       }
     }

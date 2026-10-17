@@ -18,7 +18,8 @@ export type InvokeCli = (argv: string[]) => Promise<{ code: number; stdout: stri
 export const MCP_PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"] as const;
 
 const INSTRUCTIONS = `CommonForge tools for working on a website or app project an agency manages.
-Start with sign_in if a tool answers login_required: the person gets a one-time code from the CommonForge app (Account page, or the task's Give to agent).
+For agent-native projects start with exchange_task_handoff and inspect_project_context; preserve the confirmed correction and submit only within the mandate. Never use a broad user login to work around denied agent authority.
+For legacy projects start with sign_in if a tool answers login_required: the person gets a one-time code from the CommonForge app (Account page, or the task's Give to agent).
 To ask for a change: list_projects, then create_task with a title and the request in plain words. The project's owner decides which folders a task can change.
 To do the work (needs local files and git): checkout_task into an empty folder, edit only inside it, then submit_task. save_progress keeps work safe without handing it in.`;
 
@@ -78,6 +79,41 @@ function absolute(path: string | undefined, what: string): string {
 }
 
 export const TOOLS: ToolDef[] = [
+  {
+    name: "inspect_attempt_results", title: "Inspect own attempt results",
+    description: "Read this task-scoped attempt's exact proposals, evidence, human decisions and accepted manifests. No access to other task attempts.",
+    inputSchema: { type: "object", properties: { task_id: text("Assigned task id.") }, required: ["task_id"], additionalProperties: false },
+    annotations: { readOnlyHint: true, openWorldHint: true },
+    argv: a => ({ command: "results", args: [a.task_id ?? ""] }),
+  },
+  {
+    name: "prepare_project_proposal", title: "Prepare exact project review",
+    description: "Integrate this task's submitted candidates. If queued, invoke again after completion to freeze the exact project envelope with current knowledge, source and runtime subjects. Does not approve or accept.",
+    inputSchema: { type: "object", properties: { task_id: text("Assigned task id."), inner_proposal_id: text("Optional exact integrated proposal id already returned by this task.") }, required: ["task_id"], additionalProperties: false },
+    annotations: { idempotentHint: true, openWorldHint: true },
+    argv: a => ({ command: "propose", options: a.inner_proposal_id ? [opt("inner-proposal", a.inner_proposal_id)] : [], args: [a.task_id ?? ""] }),
+  },
+  {
+    name: "exchange_task_handoff", title: "Use task-scoped authority",
+    description: "Exchange a one-time project handoff code for only this task. Does not create a broad user session.",
+    inputSchema: { type: "object", properties: { code: text("The org.project.cfh_ task handoff code."), api_url: text("The CommonForge server origin.") }, required: ["code"], additionalProperties: false },
+    annotations: { idempotentHint: false, openWorldHint: true },
+    argv: a => ({ command: "handoff", options: [opt("code", a.code ?? ""), ...(a.api_url ? [opt("api-url", a.api_url)] : [])] }),
+  },
+  {
+    name: "inspect_project_context", title: "Inspect pinned project understanding",
+    description: "Read exact confirmed rules, scenarios, assumptions and attempt authority; export protected JSON and Markdown context. Refuses stale knowledge.",
+    inputSchema: { type: "object", properties: { task_id: text("The assigned task id."), folder: text("Absolute workspace directory to receive .commonforge/context files.") }, required: ["task_id", "folder"], additionalProperties: false },
+    annotations: { idempotentHint: true, openWorldHint: true },
+    argv: a => ({ command: "context", options: [opt("out", absolute(a.folder, "folder"))], args: [a.task_id ?? ""] }),
+  },
+  {
+    name: "propose_project_record", title: "Propose knowledge or an exact change",
+    description: "Submit a structured draftKnowledge, draftScenario, or prepareProposal command with expectedGeneration and idempotencyKey. Agent scope cannot confirm, approve, accept or deploy.",
+    inputSchema: { type: "object", properties: { task_id: text("The assigned task id."), command: text("Strict JSON project command including record, expectedGeneration and idempotencyKey.") }, required: ["task_id", "command"], additionalProperties: false },
+    annotations: { idempotentHint: false, openWorldHint: true },
+    argv: a => ({ command: "native", options: [opt("command", a.command ?? "")], args: [a.task_id ?? ""] }),
+  },
   {
     name: "sign_in",
     title: "Sign in to CommonForge",
@@ -264,7 +300,7 @@ export class McpServer {
     } catch (e) {
       return fail(e instanceof CliError ? e.code : "invalid_arguments", (e as Error).message);
     }
-    if (tool.name === "sign_in") {
+    if (tool.name === "sign_in" || tool.name === "exchange_task_handoff") {
       const refused = await this.#refuseSwitch(cmd);
       if (refused) return fail("signed_in_elsewhere", refused);
     }

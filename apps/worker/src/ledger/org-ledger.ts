@@ -33,6 +33,15 @@ import {
   ProposalRecordSchema,
   TaskWorkspaceHandleSchema,
   hashCanonicalSync,
+  canonicalJson,
+  ProjectStateSchema,
+  ProjectError,
+  createProjectState,
+  computeProjectManifestHash,
+  materializeProjectContext,
+  currentConfirmed,
+  ReleaseObservationSchema,
+  ScenarioEvidenceSchema,
   type AcceptedHead,
   type AcceptedProjectVersion,
   type ApprovalRef,
@@ -55,9 +64,16 @@ import {
   executeCommit,
   executePutProposal,
   executeRestore,
+  applyProjectCommand,
+  planProjectAccept,
+  applyWrites,
+  createNativeGenesis,
+  importProjectBundle,
+  validateProjectBundle,
   type CommitDecision,
 } from '@commonforge-org/ledger';
 import { z } from 'zod';
+import { ScenarioVerificationRequestSchema, ScenarioVerificationResultSchema } from '@commonforge-org/runner-protocol';
 import type { Env } from '../env.js';
 import { ledgerError, toLedgerRpcError } from './errors.js';
 import { migrate } from './schema.js';
@@ -196,6 +212,216 @@ export class OrgLedger extends DurableObject<Env> {
 
   // ------------------------------------------------------------------ ledger operations
 
+  // Native evidence payload registration/deletion. Trusted service writes bytes before registration.
+  async registerNativePayload(organizationId:string,projectId:string,actorId:string,raw:unknown):Promise<string> {
+    const record=z.object({digest:z.string().regex(/^[a-f0-9]{64}$/),size:z.number().int().nonnegative().max(1048576),mediaType:z.string().min(1).max(256)}).strict().parse(raw);
+    return this.#rpc(()=>this.#recordTx(organizationId,tx=>{
+      const value=tx.getNativeProjectJson(projectId);if(!value)throw new ProjectError('project_not_found','project is not enabled');
+      const state=ProjectStateSchema.parse(JSON.parse(value));
+      if(!state.authorities.some(a=>a.principalId===actorId&&a.active&&a.role!=='agent'))throw new ProjectError('authority_denied','active human project authority required');
+      const old=tx.nativePayload(projectId,record.digest);
+      if(old){if(old.state!=='active'||old.size!==record.size||old.mediaType!==record.mediaType)throw new ProjectError('revision_conflict','payload was deleted or metadata differs');return canonicalJson({...old,replayed:true});}
+      tx.putNativePayload(projectId,record.digest,record.size,record.mediaType);return canonicalJson({...record,state:'active',replayed:false});
+    }));
+  }
+  async getNativePayload(projectId:string,digest:string):Promise<string|null> {
+    return this.#rpc(()=>this.#store.transactionSync(tx=>{const record=tx.nativePayload(projectId,digest);return record?canonicalJson(record):null;}));
+  }
+  async deleteNativePayload(organizationId:string,projectId:string,actorId:string,digest:string):Promise<string> {
+    z.string().regex(/^[a-f0-9]{64}$/).parse(digest);
+    return this.#rpc(()=>this.#recordTx(organizationId,tx=>{
+      const value=tx.getNativeProjectJson(projectId);if(!value)throw new ProjectError('project_not_found','project is not enabled');
+      const state=ProjectStateSchema.parse(JSON.parse(value));
+      if(!state.authorities.some(a=>a.principalId===actorId&&a.active&&a.role!=='agent'))throw new ProjectError('authority_denied','active human project authority required');
+      if(state.evidence.some(e=>e.attachments.some(a=>a.digest===digest)))throw new ProjectError('revision_conflict','payload is retained by project evidence history');
+      const old=tx.nativePayload(projectId,digest);
+      tx.tombstoneNativePayload(projectId,digest);return canonicalJson({deleted:true,replayed:!old||old.state==='deleted'});
+    }));
+  }
+  #checkNativeEvidencePayloads(tx:SqliteLedgerTx,projectId:string,raw:unknown):void {
+    const evidence=ScenarioEvidenceSchema.parse(raw);
+    for(const attachment of evidence.attachments){const payload=tx.nativePayload(projectId,attachment.digest);if(!payload||payload.state!=='active'||payload.size!==attachment.size||payload.mediaType!==attachment.mediaType)throw new ProjectError('scenario_evidence_invalid','evidence attachment is not an active verified project payload');}
+  }
+  // End native evidence payload operations.
+
+  async getNativeProject(projectId: string): Promise<string | null> {
+    return this.#rpc(() => this.#store.transactionSync(tx => tx.getNativeProjectJson(IdSegmentSchema.parse(projectId))));
+  }
+
+  /** Controlled one-way enablement. The HTTP adapter checks directory/in-flight operations;
+   * resource ownership and exact accepted heads are rechecked atomically here. */
+  async enableNativeProject(raw: unknown): Promise<string> {
+    const q = z.object({ organizationId: IdSegmentSchema, projectId: IdSegmentSchema, actorId: z.string().min(1),
+      policyRevision: z.number().int().nonnegative(), sourceHeads: z.array(z.object({resourceId:z.string(),revisionId:z.string()})).max(1000),
+      authorities: z.array(z.object({principalId:z.string(),role:z.enum(['owner','developer']),revision:z.number().int().nonnegative(),active:z.boolean()})).max(1000),
+    }).strict().parse(raw);
+    return this.#rpc(() => this.#recordTx(q.organizationId, tx => {
+      const existing = tx.getNativeProjectJson(q.projectId);
+      if (existing) return existing;
+      const s = createProjectState(q.organizationId, q.projectId);
+      s.authorities = q.authorities; s.sourceHeads = q.sourceHeads; s.policyRevision = q.policyRevision;
+      if (!s.authorities.some(a => a.principalId === q.actorId && a.active && a.role === 'owner')) throw new ProjectError('authority_denied', 'owner enablement required');
+      for (const h of s.sourceHeads) {
+        if (tx.nativeResourceProject(h.resourceId) || tx.getResourceOrganization(h.resourceId) !== q.organizationId || tx.getHead(h.resourceId)?.revisionId !== h.revisionId) throw new ProjectError('review_subject_changed', 'source ownership or head changed');
+      }
+      const value = canonicalJson(createNativeGenesis(s,{actorId:q.actorId,now:this.#now()}));
+      tx.putNativeProjectJson(q.projectId,q.organizationId,s.generation,value);
+      for (const h of s.sourceHeads) tx.lockNativeResource(h.resourceId,q.projectId);
+      return value;
+    }));
+  }
+
+  /** Only trusted Worker service code calls this RPC; authority never comes from command JSON. */
+  async nativeCommand(organizationId: string, projectId: string, command: unknown, actorId: string, artifactInput?: unknown, runnerId?: string): Promise<string> {
+    return this.#rpc(() => this.#recordTx(organizationId, tx => {
+      const stored = tx.getNativeProjectJson(projectId);
+      if (!stored) throw new ProjectError('project_not_found','agent-native project is not enabled');
+      const state = ProjectStateSchema.parse(JSON.parse(stored));
+      const actor = {actorId,now:this.#now(),...(runnerId ? {trustedRunner:{runnerId}} : {})};
+      const c = command as {type?:string;record?:unknown};
+      if(c.type==='recordEvidence')this.#checkNativeEvidencePayloads(tx,projectId,c.record);
+      const result = c.type === 'accept' ? planProjectAccept(tx,state,command,actor,artifactInput === undefined ? undefined : AcceptInputSchema.parse(artifactInput)) : applyProjectCommand(state,command,actor);
+      if (!result.replayed) {
+        // No asynchronous operation may split artifact writes from the project state write.
+        applyWrites(tx,result.artifactWrites);
+        tx.putNativeProjectJson(projectId,organizationId,result.state.generation,canonicalJson(result.state));
+        if (result.artifactWrites.some(w => w.op === 'appendOutbox')) void this.ctx.storage.setAlarm(Date.now());
+      }
+      return canonicalJson(result);
+    }));
+  }
+
+  /** Revoke effective native authority BEFORE a D1 membership/grant change reports success. */
+  async revokeNativeAuthority(organizationId:string, principalId:string):Promise<void> {
+    return this.#rpc(() => this.#recordTx(organizationId,tx => {
+      for (const value of tx.listNativeProjectJson()) {
+        const s = ProjectStateSchema.parse(JSON.parse(value));
+        const a = s.authorities.find(a => a.principalId === principalId);
+        if (!a) continue;
+        a.active=false; a.revision++; s.generation++;
+        const latest = new Map(s.mandates.map(m => [m.id,m]));
+        for (const m of latest.values()) if (m.issuer === principalId && !m.revokedAt) s.mandates.push({...m,revision:m.revision+1,createdAt:this.#now(),revokedAt:this.#now(),revocationGeneration:m.revocationGeneration+1});
+        tx.putNativeProjectJson(s.projectId,organizationId,s.generation,canonicalJson(s));
+      }
+    }));
+  }
+
+  async issueNativeHandoff(organizationId:string,projectId:string,actorId:string,taskId:string,agentId:string,resourceIds:string[],codeHash:string):Promise<string> {
+    return this.#rpc(() => this.#recordTx(organizationId,tx => {
+      const stored=tx.getNativeProjectJson(projectId);
+      if(!stored) throw new ProjectError('project_not_found','project is not enabled');
+      const s=ProjectStateSchema.parse(JSON.parse(stored)); const now=this.#now();
+      // Issuing a replacement handoff ends authority of previous attempts for this task.
+      for(const old of new Map(s.mandates.map(m=>[m.id,m])).values()) if(old.taskId===taskId&&!old.revokedAt){s.mandates.push({...old,revision:old.revision+1,createdAt:now,revokedAt:now,revocationGeneration:old.revocationGeneration+1});s.attempts=s.attempts.map(a=>a.mandateId===old.id?{...a,status:'revoked' as const,endedAt:now}:a);}
+      if(!s.authorities.some(a=>a.principalId===agentId)) s.authorities.push({principalId:agentId,role:'agent',revision:1,active:true});
+      if(resourceIds.some(id=>!s.sourceHeads.some(h=>h.resourceId===id))) throw new ProjectError('mandate_scope_denied','resource outside project');
+      const mandateId=`mandate:${codeHash}`;
+      const result=applyProjectCommand(s,{type:'issueMandate',expectedGeneration:s.generation,idempotencyKey:`handoff:${codeHash}`,record:{schemaVersion:1,organizationId,projectId,id:mandateId,author:actorId,createdAt:now,revision:1,taskId,agentId,issuer:actorId,operations:['context:read','source:checkout','candidate:submit','knowledge:propose','attempt:read'],resourceIds,issuedAt:now,expiresAt:new Date(Date.parse(now)+3600000).toISOString(),revocationGeneration:0,revokedAt:null,maxAttempts:1,maxJobs:10,timeoutSeconds:120}}, {actorId,now});
+      const record={codeHash,projectId,taskId,issuer:actorId,agentId,mandateId,expiresAt:Date.parse(now)+900000,consumed:false,packet:null,attemptId:null};
+      tx.putNativeHandoff(codeHash,null,projectId,canonicalJson(record));
+      tx.putNativeProjectJson(projectId,organizationId,result.state.generation,canonicalJson(result.state));
+      return canonicalJson({mandateId,expiresAt:record.expiresAt});
+    }));
+  }
+
+  async exchangeNativeHandoff(organizationId:string,projectId:string,codeHash:string,tokenHash:string):Promise<string> {
+    return this.#rpc(() => this.#recordTx(organizationId,tx => {
+      const raw=tx.getNativeHandoff(codeHash); const stored=tx.getNativeProjectJson(projectId);
+      if(!raw || !stored) throw new ProjectError('authority_denied','handoff unavailable');
+      const h=JSON.parse(raw) as {codeHash:string;projectId:string;taskId:string;issuer:string;agentId:string;mandateId:string;expiresAt:number;consumed:boolean;packet:unknown;attemptId:string|null};
+      const now=this.#now();
+      if(h.projectId!==projectId || h.consumed || h.expiresAt<=Date.parse(now)) throw new ProjectError('authority_denied','handoff unavailable');
+      const s=ProjectStateSchema.parse(JSON.parse(stored));
+      const m=s.mandates.filter(m=>m.id===h.mandateId).at(-1);
+      if(!m) throw new ProjectError('authority_denied','handoff unavailable');
+      const attemptId=`attempt:${codeHash}`;
+      const outcomes=[...new Map(s.outcomes.map(o=>[o.id,o])).values()];
+      const packet=materializeProjectContext({domain:'cf.project-context/1',schemaVersion:1,organizationId,projectId,taskId:h.taskId,attemptId,mandate:m,knowledgeHead:s.knowledgeHead,knowledgeGeneration:s.knowledgeGeneration,outcomes,rules:currentConfirmed(s.knowledge).filter(k=>k.kind!=='assumption'),assumptions:[...new Map(s.knowledge.filter(k=>k.kind==='assumption' && !k.archived).map(k=>[k.id,k])).values()],scenarios:currentConfirmed(s.scenarios),sourceHeads:s.sourceHeads,omissions:[]});
+      const result=applyProjectCommand(s,{type:'exchangeHandoff',expectedGeneration:s.generation,idempotencyKey:`exchange:${codeHash}`,record:{schemaVersion:1,organizationId,projectId,id:attemptId,author:h.agentId,createdAt:now,taskId:h.taskId,agentId:h.agentId,mandateId:m.id,mandateRevision:m.revision,contextDigest:packet.digest,knowledgeHead:s.knowledgeHead,startedAt:now,endedAt:null,status:'active',proposalIds:[]}}, {actorId:h.agentId,now});
+      h.consumed=true;h.packet=packet;h.attemptId=attemptId;
+      tx.putNativeHandoff(codeHash,tokenHash,projectId,canonicalJson(h));
+      tx.putNativeProjectJson(projectId,organizationId,result.state.generation,canonicalJson(result.state));
+      return canonicalJson({taskId:h.taskId,issuer:h.issuer,agentId:h.agentId,mandateId:m.id,attemptId,expiresAt:m.expiresAt,generation:result.state.generation,context:packet});
+    }));
+  }
+
+  async resolveNativeToken(projectId:string,tokenHash:string):Promise<string|null> {
+    return this.#rpc(() => this.#store.transactionSync(tx => {
+      const raw=tx.getNativeHandoff(tokenHash,true);const stored=tx.getNativeProjectJson(projectId);
+      if(!raw || !stored) return null;
+      const h=JSON.parse(raw) as {projectId:string;taskId:string;issuer:string;agentId:string;mandateId:string;attemptId:string;packet:unknown};
+      const s=ProjectStateSchema.parse(JSON.parse(stored));const m=s.mandates.filter(m=>m.id===h.mandateId).at(-1);const now=Date.parse(this.#now());
+      if(h.projectId!==projectId || !m || m.revokedAt || Date.parse(m.expiresAt)<=now || !s.authorities.some(a=>a.principalId===h.issuer && a.active) || !s.authorities.some(a=>a.principalId===h.agentId && a.active)) return null;
+      return canonicalJson({...h,generation:s.generation,expiresAt:m.expiresAt,knowledgeStale:(s.attempts.find(a=>a.id===h.attemptId)?.knowledgeHead!==s.knowledgeHead)});
+    }));
+  }
+
+  async recordNativeObservation(organizationId:string,projectId:string,raw:unknown):Promise<void> {
+    return this.#rpc(() => this.#recordTx(organizationId,tx => {
+      const value=tx.getNativeProjectJson(projectId);if(!value)throw new ProjectError('project_not_found','project unavailable');
+      const s=ProjectStateSchema.parse(JSON.parse(value)),r=ReleaseObservationSchema.parse(raw);
+      if(r.organizationId!==organizationId || r.projectId!==projectId || !s.manifests.some(m=>m.hash===r.manifestHash&&m.behavior==='verified') || Date.parse(r.observedAt)>Date.parse(this.#now()) || Date.parse(r.freshUntil)<=Date.parse(r.observedAt))throw new ProjectError('review_subject_changed','observation subject unavailable');
+      const prior=s.observations.find(x=>x.id===r.id);if(prior){if(canonicalJson(prior)!==canonicalJson(r))throw new ProjectError('revision_conflict','observation identity already used');return;}
+      s.observations.push(r);s.generation++;tx.putNativeProjectJson(projectId,organizationId,s.generation,canonicalJson(ProjectStateSchema.parse(s)));
+    }));
+  }
+
+  async reserveNativeVerification(organizationId:string,projectId:string,actorId:string,key:string,raw:unknown):Promise<string> {
+    return this.#rpc(() => this.#recordTx(organizationId,tx => {
+      const request=ScenarioVerificationRequestSchema.parse(raw),value=tx.getNativeProjectJson(projectId);
+      if(!value)throw new ProjectError('project_not_found','project unavailable');
+      const s=ProjectStateSchema.parse(JSON.parse(value));
+      if(!s.authorities.some(a=>a.principalId===actorId&&a.active&&a.role!=='agent'))throw new ProjectError('authority_denied','human authority required');
+      const p=s.proposals.find(p=>p.digest===request.envelopeDigest);
+      if(!p || request.organizationId!==organizationId || request.projectId!==projectId || p.envelope.expectedKnowledgeHead!==s.knowledgeHead || p.envelope.expectedParent!==s.manifests.at(-1)?.hash || p.envelope.policyRevision!==s.policyRevision)throw new ProjectError('knowledge_stale','proposal requirements changed');
+      const mandate=s.mandates.filter(m=>m.id===p.envelope.mandateId).at(-1);
+      const attempt=s.attempts.find(a=>a.id===p.envelope.attemptId);
+      if(!mandate||!attempt||mandate.revokedAt||Date.parse(mandate.expiresAt)<=Date.parse(this.#now())||mandate.revision!==p.envelope.mandateRevision||attempt.mandateId!==mandate.id||attempt.status==='revoked'||!s.authorities.some(a=>a.principalId===mandate.issuer&&a.active&&a.role!=='agent'))throw new ProjectError('mandate_revoked','verification mandate unavailable');
+      // A pending idempotent dispatch is still new execution: revocation must win over replay.
+      const prior=tx.nativeJob(projectId,key);
+      if(prior){const old=ScenarioVerificationRequestSchema.parse(JSON.parse(prior.request));if(old.envelopeDigest!==request.envelopeDigest)throw new ProjectError('idempotency_conflict','verification key already used');return canonicalJson(prior);}
+      const used=s.proposals.filter(q=>q.envelope.mandateId===mandate.id).reduce((count,q)=>count+tx.nativeJobCount(projectId,q.digest),0);
+      if(used>=mandate.maxJobs)throw new ProjectError('mandate_scope_denied','verification job budget exhausted');
+      tx.putNativeJob(projectId,key,canonicalJson(request),null);return canonicalJson({request:canonicalJson(request),result:null});
+    }));
+  }
+
+  /** Result signature/set was checked by trusted HTTP service. Ingest all scenario records atomically. */
+  async completeNativeVerification(organizationId:string,projectId:string,actorId:string,key:string,raw:unknown):Promise<string> {
+    return this.#rpc(() => this.#recordTx(organizationId,tx => {
+      const job=tx.nativeJob(projectId,key);if(!job)throw new ProjectError('scenario_evidence_invalid','verification request unavailable');
+      if(job.result)return job.result;
+      const request=ScenarioVerificationRequestSchema.parse(JSON.parse(job.request));const result=ScenarioVerificationResultSchema.parse(raw);
+      if(result.requestDigest!==hashCanonicalSync(request))throw new ProjectError('scenario_evidence_invalid','verification request mismatch');
+      const value=tx.getNativeProjectJson(projectId);if(!value)throw new ProjectError('project_not_found','project unavailable');
+      let state=ProjectStateSchema.parse(JSON.parse(value));
+      const proposal=state.proposals.find(p=>p.digest===request.envelopeDigest);
+      if(!proposal||proposal.envelope.expectedKnowledgeHead!==state.knowledgeHead)throw new ProjectError('knowledge_stale','requirements changed during verification');
+      for(const record of result.evidence){
+        this.#checkNativeEvidencePayloads(tx,projectId,record);
+        const previous=state.evidence.filter(e=>e.envelopeDigest===record.envelopeDigest&&e.scenarioId===record.scenarioId).at(-1);
+        // Retry supersession is explicit in the persisted platform ingestion record.
+        const bound={...record,supersedes:previous?.id??null};
+        state=applyProjectCommand(state,{type:'recordEvidence',record:bound,expectedGeneration:state.generation,idempotencyKey:`evidence:${record.id}`},{actorId,now:this.#now(),trustedRunner:{runnerId:record.actor}}).state;
+      }
+      tx.putNativeProjectJson(projectId,organizationId,state.generation,canonicalJson(state));
+      const output=canonicalJson({runId:result.runId,evidence:state.evidence.filter(e=>e.runId===result.runId),state,execution:result.execution});
+      tx.putNativeJob(projectId,key,job.request,output);return output;
+    }));
+  }
+
+  async importNativeBundle(organizationId:string,projectId:string,ownerId:string,raw:unknown):Promise<string> {
+    return this.#rpc(() => this.#recordTx(organizationId,tx=>{
+      const bundle=validateProjectBundle(raw),archive=tx.getNativeArchive(projectId);
+      if(archive){if(validateProjectBundle(JSON.parse(archive)).digest!==bundle.digest)throw new ProjectError('idempotency_conflict','import destination already used');return tx.getNativeProjectJson(projectId)!;}
+      if(tx.getNativeProjectJson(projectId))throw new ProjectError('project_mode_unsupported','import requires a new project');
+      const result=importProjectBundle(bundle,{organizationId,projectId,ownerId,now:this.#now()});const value=canonicalJson(result.state);
+      tx.putNativeProjectJson(projectId,organizationId,result.state.generation,value);tx.putNativeArchive(projectId,bundle.digest,canonicalJson(bundle));return value;
+    }));
+  }
+
+  async nativeArchive(projectId:string):Promise<string|null>{return this.#rpc(()=>this.#store.transactionSync(tx=>tx.getNativeArchive(projectId)));}
+
   /** Conditional acceptance (§B.9). The acting organization is the proposal's. */
   async accept(input: unknown): Promise<LedgerResult> {
     return this.#rpc(() => {
@@ -204,6 +430,7 @@ export class OrgLedger extends DurableObject<Env> {
       const d = this.#commit((tx) => {
         const proposal = tx.getProposal(parsed.proposalId);
         if (proposal) tx.checkLedgerOrganization(proposal.organizationId);
+        if (proposal && (tx.getNativeProjectJson(proposal.projectId) || [...proposal.resourceChanges,...proposal.assetManifestChanges].some(r => tx.nativeResourceProject(r.resourceId)))) throw new ProjectError('project_mode_unsupported','use project envelope acceptance for agent-native resources');
         const decision = executeCommit(tx, parsed, now);
         if (decision.ok && proposal) tx.pinLedgerOrganization(proposal.organizationId);
         return decision;
@@ -219,6 +446,7 @@ export class OrgLedger extends DurableObject<Env> {
       const now = this.#now();
       const d = this.#commit((tx) => {
         tx.checkLedgerOrganization(parsed.organizationId);
+        if (tx.nativeResourceProject(parsed.resourceId)) throw new ProjectError('project_mode_unsupported','recovery requires a project proposal under current knowledge');
         const decision = executeRestore(tx, parsed, now);
         if (decision.ok) tx.pinLedgerOrganization(parsed.organizationId);
         return decision;
@@ -234,6 +462,7 @@ export class OrgLedger extends DurableObject<Env> {
       const now = this.#now();
       const d = this.#commit((tx) => {
         tx.checkLedgerOrganization(parsed.organizationId);
+        if (tx.nativeResourceProject(parsed.resourceId)) throw new ProjectError('project_mode_unsupported','native genesis source ownership is already fixed');
         const decision = executeBindHead(tx, parsed, now);
         if (decision.ok) tx.pinLedgerOrganization(parsed.organizationId);
         return decision;
@@ -332,6 +561,8 @@ export class OrgLedger extends DurableObject<Env> {
         const current = tx.getCurrentPolicyRevision(project);
         if (current !== null && rev < current) throw ledgerError('ledger_conflict', `policy revision for ${project} cannot decrease (${current} -> ${rev})`);
         tx.setPolicyRevision(project, rev);
+        const value=tx.getNativeProjectJson(project);
+        if(value){const s=ProjectStateSchema.parse(JSON.parse(value));if(s.policyRevision!==rev){s.policyRevision=rev;s.generation++;tx.putNativeProjectJson(project,organizationId,s.generation,canonicalJson(s));}}
       });
     });
   }

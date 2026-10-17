@@ -44,3 +44,11 @@ session.json
 
 # run outputs of the live harness and demo scripts (commit a run deliberately with `git add -f`)
 evidence/
+
+# Task-local verification artifacts (may contain local coordinates)
+.g1-artifacts/
+
+# Reviewed, sanitized G1 evidence summaries are deliberately public; raw run evidence stays ignored.
+!/docs/agent-native/evidence/
+!/docs/agent-native/evidence/*.json
+!/docs/agent-native/evidence/*.diff

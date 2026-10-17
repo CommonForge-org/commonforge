@@ -2,7 +2,7 @@
 import { useSyncExternalStore } from "react";
 
 /** `tasks`: the Tasks board, shown only for staging-mode projects (staging phase 3). */
-export type ProjectTab = "overview" | "files" | "changes" | "versions" | "activity" | "tasks";
+export type ProjectTab = "overview" | "files" | "changes" | "versions" | "activity" | "tasks" | "outcomes" | "knowledge" | "review";
 
 export type Route =
   | { name: "signin" }
@@ -24,6 +24,9 @@ export type Route =
   | { name: "project"; org: string; pid: string; tab: "changes" }
   | { name: "project"; org: string; pid: string; tab: "overview" }
   | { name: "project"; org: string; pid: string; tab: "activity" }
+  | { name: "project"; org: string; pid: string; tab: "outcomes" }
+  | { name: "project"; org: string; pid: string; tab: "knowledge" }
+  | { name: "project"; org: string; pid: string; tab: "review" }
   /** the Tasks board (staging-mode projects): `/o/:org/p/:pid/tasks` */
   | { name: "project"; org: string; pid: string; tab: "tasks" }
   | { name: "project"; org: string; pid: string; tab: "versions"; mount?: string; /** an accepted version id: open its restore sheet */ version?: string }
@@ -63,6 +66,7 @@ export function parseRoute(pathname: string, search: string): Route {
       const intakeId = q.get("intake") ?? undefined;
       return { name: "intake", org, pid, ...(intakeId ? { intakeId } : {}) };
     }
+    if ((tab === "outcomes" || tab === "knowledge" || tab === "review") && parts.length === 5) return { name: "project", org, pid, tab };
     if (tab === "changes" && parts.length === 5) return { name: "project", org, pid, tab: "changes" };
     if (tab === "overview" && parts.length === 5) return { name: "project", org, pid, tab: "overview" };
     if (tab === "activity" && parts.length === 5) return { name: "project", org, pid, tab: "activity" };

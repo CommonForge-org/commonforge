@@ -408,3 +408,36 @@ rows against any git-backed provider.
   (`staging_failed`) and then added by the accept anyway; GC keeps its uploads while a promotion claims
   the landing. If an object is missing at that point all the same, the change is added with event
   `files.change_objects_missing` (and a Worker error log) for a developer to re-upload the file.
+
+## G1 agent-native workflow (2026-10-17 implementation)
+
+The [execution record](agent-native/execution-status.md) distinguishes measured gates from plans.
+The new public reference workflow has real local Git/Node/preview execution, confirmed knowledge,
+scoped handoffs and independently verified atomic project acceptance. The existing agency mode,
+hashes, approval policy and migrations remain compatible.
+
+Current native limitations:
+
+- Enablement is explicit after source setup. Source membership is fixed afterward; shared staging,
+  legacy direct accept/restore/adoption and combined source-plus-knowledge acceptance are refused.
+- A replacement handoff supplies new pinned context and revokes the old task mandate. Transparent
+  extension of an existing attempt/token is not implemented. New/restored user grants do not refresh
+  native authority automatically; revocation fails closed and must not be treated as a temporary UI flag.
+- The trusted concrete automated verifier covers the synthetic scheduling fixture. Arbitrary candidate
+  test scripts cannot replace it. Supported local builds/checks use Linux namespaces and Node entrypoints
+  with dependency installation disabled. Local preview APIs support standalone Node-compatible modules,
+  with synthetic state per request; Workers-only APIs and production persistence are not emulated.
+- Namespace checks/builds do not mount the controller source/keys or host network. External developer
+  agents on the same OS account are outside that process boundary; this is not a multi-tenant host.
+- Native release bindings and five-minute observations are implemented, but the local Node source/runtime
+  verifier cannot authorize a different Cloudflare deployment runtime. Matching production verification
+  and a real authorized isolated Cloudflare release/recovery rehearsal remain outstanding. No native
+  production deployment or continuous monitoring is claimed.
+- Bundles preserve historical metadata and available evidence bytes without importing trust. They
+  explicitly report missing Git content, are not complete backups, and do not restore Git repositories.
+  Evidence bytes are conservatively retained across all history. Only unreferenced bytes can be deleted;
+  permanent tombstones prevent deletion/registration races. Automatic orphan expiry is not implemented.
+- The actual fresh-session rehearsal used a Codex subagent with no inherited conversation, persisted
+  context only, and independent execution of its result. This establishes same-family session continuity
+  for the declared fixture, not cross-vendor compatibility or general behavioral correctness.
+- Owner-role API/browser automation is verified. No domain-expert human usability study was observed.

@@ -739,9 +739,9 @@ test("Getting started on a fresh organization: Git import, release example, firs
   await panel.getByRole("button", { name: "Publish this version" }).click();
   await panel.getByRole("button", { name: "Approve publishing this release" }).click({ timeout: 30_000 });
   await panel.getByRole("button", { name: "Publish to production" }).click();
-  await expect(panel.locator(".badge", { hasText: /^Live$/ })).toBeVisible({ timeout: 45_000 });
-  // the version list follows without a reload
-  await expect(page.locator("li.version-live").locator(".badge", { hasText: /^Live$/ })).toBeVisible({ timeout: 20_000 });
+  // First publication intentionally removes the publish panel once it is live
+  // (Versions.tsx publishTarget). Wait for the durable timeline state, not that transient panel.
+  await expect(page.locator("li.version-live").locator(".badge", { hasText: /^Live$/ })).toBeVisible({ timeout: 45_000 });
 
   // 4. staging: the Staging example; production is live, so staging starts at once (no waiting)
   await overview();

@@ -23,6 +23,8 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      - run: sudo apt-get update && sudo apt-get install -y bubblewrap
+      - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm build
@@ -66,6 +68,33 @@ jobs:
           path: |
             apps/web/playwright-report/
             apps/web/test-results/
+          retention-days: 7
+
+  g1-local:
+    name: G1 real Git, runner and owner browser journey
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v6.1.0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: sudo apt-get update && sudo apt-get install -y bubblewrap
+      # Ubuntu's AppArmor default may deny unprivileged namespaces on ephemeral CI hosts.
+      - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @commonforge-org/web exec playwright install --with-deps chromium
+      - run: pnpm test:g1:local
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: g1-sanitized-results
+          path: |
+            .g1-artifacts/local-ci/report.json
+            apps/web/test-results/native/**/*.png
+            apps/web/test-results/native/**/source-acceptance.json
           retention-days: 7
 
   # Secrets are not readable in a job-level `if`, so detect them in a tiny job first.

@@ -16,3 +16,4 @@ export * from './capabilities.js';
 export * from './staging.js';
 export * from './text-diff.js';
 export * from './risk.js';
+export * from './project.js';

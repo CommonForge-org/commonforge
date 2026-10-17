@@ -18,6 +18,10 @@ import { EditionsButton, StartUpdateButton } from "./Editions.js";
 import { ExportPanel } from "./ExportPanel.js";
 import { FilesScreen } from "./Files.js";
 import { IntakeScreen } from "./Intake.js";
+import { ProjectKnowledge } from "./ProjectKnowledge.js";
+import { ProjectOutcomes } from "./ProjectOutcomes.js";
+import { loadNativeProject } from "../api/native.js";
+import { NativeOverview, NativeReview } from "./NativeReview.js";
 import { OverviewScreen } from "./Overview.js";
 import { decisionCount, loadLive, POLL_MS, ProjectContext, updateRegistry, UploadsContext, useProjectUploads, type LiveState } from "./project-data.js";
 import { ProjectSettings } from "./ProjectSettings.js";
@@ -29,9 +33,9 @@ import { TasksBoardScreen } from "./TasksBoard.js";
 import { VersionsScreen } from "./Versions.js";
 
 type ProjectRoute = Extract<Route, { name: "project" } | { name: "proposal" } | { name: "promotion" } | { name: "intake" } | { name: "settings" }>;
-type Section = "overview" | "tasks" | "files" | "changes" | "versions" | "activity" | "settings";
+type Section = "overview" | "tasks" | "files" | "changes" | "versions" | "activity" | "settings" | "outcomes" | "knowledge" | "review";
 
-const SECTION_LABEL: Record<Section, string> = { overview: "Overview", tasks: "Tasks", files: "Files", changes: "Changes", versions: "Versions", activity: "Activity", settings: "Settings" };
+const SECTION_LABEL: Record<Section, string> = { outcomes: "Outcomes", knowledge: "Knowledge", review: "Behavior review", overview: "Overview", tasks: "Tasks", files: "Files", changes: "Changes", versions: "Versions", activity: "Activity", settings: "Settings" };
 
 /** `showTasks`: the Tasks board, staging-mode projects only (staging phase 3). */
 export function navItems(org: string, pid: string, decisions: number, showSettings = false, showTasks = false): NavItem[] {
@@ -39,6 +43,7 @@ export function navItems(org: string, pid: string, decisions: number, showSettin
   return [
     { id: "overview", label: "Overview", icon: "overview", href: projectHref(org, pid, "overview") },
     ...(showTasks ? [{ id: "tasks", label: "Tasks", icon: "layout", href: projectHref(org, pid, "tasks") } as NavItem] : []),
+    ...(showSettings ? [{ id: "outcomes", label: "Outcomes", icon: "overview", href: projectHref(org, pid, "outcomes") }, { id: "knowledge", label: "Knowledge", icon: "files", href: projectHref(org, pid, "knowledge") }, { id: "review", label: "Behavior review", icon: "changes", href: projectHref(org, pid, "review") }] as NavItem[] : []),
     { id: "files", label: "Files", icon: "files", href: projectHref(org, pid, "files") },
     { id: "changes", label: "Changes", icon: "changes", href: projectHref(org, pid, "changes"), count: decisions, countState: "decision", countLabel: decisionLabel },
     { id: "versions", label: "Versions", icon: "versions", href: projectHref(org, pid, "versions") },
@@ -84,13 +89,14 @@ export function projectInspector(org: string, project: Project, role: Role): Ins
 }
 
 export function ProjectShell({ route, role, onSignOut }: { route: ProjectRoute; role: Role; onSignOut?: () => void }) {
-  const { api, me } = useApp();
+  const { api, me, fixture } = useApp();
   const { org, pid } = route;
   const project = useLoad(() => api.getProject(org, pid), `${org}/${pid}/${role}`);
   // the project (its policy says whether staging is on, for owners and developers) and the previous
   // poll (kept for staging and captures when a read fails) are read at each poll
   const live: Loaded<LiveState> = useLoad(() => loadLive(api, org, pid, role, { project: project.data, previous: live.data }), `${org}/${pid}/${role}`, POLL_MS);
   const dev = isDeveloperRole(role);
+  const native = useLoad(() => dev && !fixture ? loadNativeProject(org, pid) : Promise.resolve(null), `${org}/${pid}/${role}/native-mode`, POLL_MS);
   // uploads outlive the Files tab: only leaving the project (this frame) or the page cancels them
   const uploads = useProjectUploads(api, org, pid);
   const [inspectorOpen, setInspectorOpen] = useState(() => readFlag(INSPECTOR_KEY));
@@ -157,7 +163,7 @@ export function ProjectShell({ route, role, onSignOut }: { route: ProjectRoute; 
             <h1>{project.data.name}</h1>
             <div className="project-actions">
               {/* staging-mode projects have no client editions: clients work in tasks (P42-2) */}
-              {dev && !stagingMode ? <EditionsButton /> : null}
+              {dev && !stagingMode && !native.data ? <EditionsButton /> : null}
               {dev ? <ExportPanel /> : null}
               {/* the client's action; developers do not start client edition sessions (review m-2) */}
               {role === "client" && !stagingMode ? <StartUpdateButton quiet /> : null}
@@ -177,8 +183,14 @@ export function ProjectShell({ route, role, onSignOut }: { route: ProjectRoute; 
           ) : (
             <ErrorNote error={new ApiError(404, "not_found", "This page does not exist or you do not have access.")} />
           )
+        ) : route.tab === "knowledge" ? (
+          <ProjectKnowledge />
+        ) : route.tab === "outcomes" ? (
+          <ProjectOutcomes />
+        ) : route.tab === "review" ? (
+          <NativeReview />
         ) : route.tab === "overview" ? (
-          <OverviewScreen />
+          native.data ? <NativeOverview state={native.data} /> : <OverviewScreen />
         ) : route.tab === "tasks" ? (
           stagingMode ? (
             <TasksBoardScreen />

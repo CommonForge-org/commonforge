@@ -34,6 +34,17 @@ import { verifiedObjectBody } from "../services/lfs-hash.js";
 
 export const projectRoutes = new Hono<AppEnv>();
 
+// G1 freezes source membership at enablement; mutable legacy folder/policy workflows
+// cannot detach source from an accepted manifest or activate shared staging.
+projectRoutes.use('/orgs/:org/projects/:pid/*', async (c,next) => {
+  if (c.req.method === 'GET') return next();
+  const path=new URL(c.req.url).pathname;
+  if (!/\/(folders|mounts)(\/|$)/.test(path)) return next();
+  const actor=await orgActor(c,c.req.param('org')!,['owner','developer']);
+  if (await c.get('svc').ledger(actor.orgId).getNativeProject(c.req.param('pid')!)) throw conflict('project_mode_unsupported','source membership is fixed for this agent-native project');
+  return next();
+});
+
 projectRoutes.post("/orgs/:org/projects", async (c) => {
   const actor = await orgActor(c, c.req.param("org"), ["owner", "developer"]);
   const body = await readJson(c, z.object({ name: z.string().trim().min(1).max(128) }));
@@ -178,6 +189,7 @@ projectRoutes.put("/orgs/:org/projects/:pid/policy", async (c) => {
     const issues = stagingIssues(body.staging, body.release, body.approvalRoles);
     if (issues.length > 0) throw badRequest("invalid_policy", issues[0]!.message, { issues });
   }
+  if (body.staging && await svc.ledger(actor.orgId).getNativeProject(project.project_id)) throw conflict("project_mode_unsupported", "shared staging is unavailable for agent-native projects");
   const policy: ProjectPolicy = body;
   const rev = project.policy_revision + 1;
   const changed = async (message: string) => {

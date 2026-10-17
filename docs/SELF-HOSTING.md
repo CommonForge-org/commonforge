@@ -191,3 +191,13 @@ node scripts/ci-live/rehearsal.ts    # the demo-agents orchestrator with real ag
 node scripts/ci-live/take.ts         # the demo take (docs/DEMO-SCRIPT.md), beat by beat, timed
 node scripts/ci-live/sweep.ts        # remove leftovers of interrupted CI runs (--dry-run)
 ```
+
+## G1 real-local reference workflow
+
+`pnpm dev:real-local` runs a disposable real Git/Worker/Node stack without Cloudflare credentials.
+Use Linux with bubblewrap and unprivileged namespaces. `pnpm test:g1:local` runs its bounded API and
+owner browser journey; `pnpm dev:local` continues to use fakes. See
+[local setup and limitations](agent-native/local-workflow.md) and
+[measured execution status](agent-native/execution-status.md). Existing production bootstrap and
+GitHub CI remain the recovery/distribution bridge. The current local scenario runtime cannot authorize
+a native Cloudflare production release; [the live gate](agent-native/release-rehearsal.md) remains separate.
