@@ -19,6 +19,7 @@
  */
 import { LedgerRecordError, type LedgerRecordErrorCode } from '@commonforge-org/ledger';
 import { z } from 'zod';
+import { ProjectError } from '@commonforge-org/core';
 
 export const LEDGER_RPC_ERROR_CODES = [
   'ledger_invalid_input',
@@ -63,6 +64,8 @@ const RECORD_ERROR_CODE: Readonly<Record<LedgerRecordErrorCode, LedgerRpcErrorCo
 
 /** Map any error raised inside the DO to a coded `LedgerRpcError` (used by every RPC method). */
 export function toLedgerRpcError(e: unknown): LedgerRpcError {
+  // Preserve stable G1 refusal codes across RPC rather than wrapping them as ledger_internal.
+  if (e instanceof ProjectError) throw new Error(`project_refused:${e.code}: ${e.message}`);
   if (e instanceof LedgerRpcError) return e;
   if (e instanceof LedgerRecordError) return new LedgerRpcError(RECORD_ERROR_CODE[e.code], e.detail);
   const message = e instanceof Error ? e.message : String(e);

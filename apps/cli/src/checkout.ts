@@ -12,7 +12,7 @@
  * No token is ever written to disk, to git config, to workspace.json or to the output.
  */
 import { mkdir, readdir, realpath, rm, stat } from "node:fs/promises";
-import { resolve } from "node:path";
+import { join, resolve } from "node:path";
 import { MaterializationPlanSchema, type MaterializationPlan } from "@commonforge-org/core";
 import { materialize, validatePlan, verifyMaterialization, type AssetObjectRequest } from "@commonforge-org/runner-protocol";
 import { createNodeIo } from "@commonforge-org/runner-protocol/node";
@@ -21,6 +21,7 @@ import { int, parse, positional, type CommandContext } from "./command.js";
 import { CliError, scrub } from "./context.js";
 import type { CheckoutRecord } from "./config.js";
 import { gitEnv, helperConfigEntries, helperConfigEnv, installHelperConfig, lfsConfigEntries } from "./git.js";
+import { fetchNativeContext, writeNativeContext, type NativeContext } from "./native.js";
 import { acquireLease, leaseTtl } from "./project.js";
 
 const USAGE = "cforge checkout <taskId> <dir> [--lease-ttl <seconds>] [--wait <seconds>] [--json]";
@@ -80,9 +81,10 @@ export async function checkout(ctx: CommandContext, args: readonly string[]): Pr
   let userApi: ApiClient | null = null;
   let leaseInfo: Record<string, unknown>;
   let leaseToken: string;
-  const envLease = await leaseBearer(ctx.io, ctx.store, taskId, apiUrl).then((b) => (b?.source === "env" ? b : null));
+  const nativeStored = await stat(join(ctx.store.dir, "native", `${taskId}.json`)).then(() => true, () => false);
+  const envLease = await leaseBearer(ctx.io, ctx.store, taskId, apiUrl).then(b => b?.source === "env" || nativeStored ? b : null);
   if (envLease) {
-    leaseInfo = { source: "env" };
+    leaseInfo = { source: envLease.source };
     leaseToken = envLease.token;
   } else {
     userApi = (await sessionClient(ctx.io, ctx.store, apiUrl)).api;
@@ -115,7 +117,10 @@ export async function checkout(ctx: CommandContext, args: readonly string[]): Pr
     }
     if (plan.workspaceRoot !== root) throw new CliError("invalid_plan", `the plan is for ${plan.workspaceRoot}, not ${root}`);
     checkRemotes(plan);
-    await materializeAndVerify(ctx, plan, { apiUrl, taskId, root, leaseApi, leaseInfo, setRecord: (r) => void (recordPath = r) });
+    const task = await leaseApi.get<{ projectProtocolVersion?: number }>(`/api/tasks/${encodeURIComponent(taskId)}`);
+    if (nativeStored && task.projectProtocolVersion !== 1 || task.projectProtocolVersion !== undefined && task.projectProtocolVersion !== 1) throw new CliError("unsupported_version", "unsupported project protocol");
+    const nativeContext = task.projectProtocolVersion === 1 ? await fetchNativeContext(leaseApi, taskId) : null;
+    await materializeAndVerify(ctx, plan, { apiUrl, taskId, root, leaseApi, leaseInfo, setRecord: (r) => void (recordPath = r), ...(nativeContext ? { nativeContext } : {}) });
   } catch (e) {
     await cleanup();
     throw e;
@@ -125,7 +130,7 @@ export async function checkout(ctx: CommandContext, args: readonly string[]): Pr
 async function materializeAndVerify(
   ctx: CommandContext,
   plan: MaterializationPlan,
-  o: { apiUrl: string; taskId: string; root: string; leaseApi: ApiClient; leaseInfo: Record<string, unknown>; setRecord: (path: string) => void },
+  o: { apiUrl: string; taskId: string; root: string; leaseApi: ApiClient; leaseInfo: Record<string, unknown>; nativeContext?: NativeContext; setRecord: (path: string) => void },
 ): Promise<void> {
   const { apiUrl, taskId, root } = o;
   // The lease goes to an LFS URL only on the API's own origin (Tokens, folders phase 4).
@@ -213,7 +218,12 @@ async function materializeAndVerify(
     ...(m.taskWorkspaceId ? { taskWorkspaceId: m.taskWorkspaceId } : {}),
     ...(m.source.kind === "git" ? { kind: "git", sha: m.source.sha, remoteUrl: m.source.remoteUrl } : { kind: "assets", manifestId: m.source.manifest.manifestId }),
   }));
-  ctx.out.result({ taskId, workspaceRoot: root, mounts, lease: o.leaseInfo, verified: true }, () =>
+  if(o.nativeContext){
+    const current=await fetchNativeContext(o.leaseApi,taskId);
+    if(current.attemptId!==o.nativeContext.attemptId||current.context.digest!==o.nativeContext.context.digest)throw new CliError('context_invalid','task authority changed during checkout');
+    await writeNativeContext(root,current);
+  }
+  ctx.out.result({ ...(o.nativeContext ? { projectProtocolVersion: 1, attemptId: o.nativeContext.attemptId, contextDigest: o.nativeContext.context.digest } : {}), taskId, workspaceRoot: root, mounts, lease: o.leaseInfo, verified: true }, () =>
     [
       `Checked out ${taskId} into ${root} (verified).`,
       ...mounts.map((m) => `  ${m.mountName.padEnd(20)} ${m.writable ? "read-write" : "read-only "} ${"sha" in m ? m.sha : m.manifestId}`),

@@ -5,7 +5,7 @@
   </picture>
 </p>
 
-<h3 align="center">Your clients build. Their agents help. You stay in control.</h3>
+<h3 align="center">Your project’s understanding survives the agent.</h3>
 
 <p align="center">
   <a href="https://github.com/CommonForge-org/commonforge/actions/workflows/ci.yml"><img src="https://github.com/CommonForge-org/commonforge/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
@@ -14,10 +14,20 @@
   <a href="https://developers.cloudflare.com/workers/"><img src="https://img.shields.io/badge/runs%20on-Cloudflare%20Workers%20%2B%20Artifacts-F38020?logo=cloudflare&logoColor=white" alt="Runs on Cloudflare Workers and Artifacts"></a>
 </p>
 
-CommonForge is a self-hosted workspace where an agency, its clients and their coding agents change
-a client's website together. Clients ask for changes as tasks. Agents work on each task in an
-isolated copy of the code. Every change is checked, previewed on a staging site and approved
-before it reaches production, and every accepted version can be restored.
+CommonForge is a public, self-hosted platform for people and coding agents to own software
+and its project knowledge. The reference product now includes confirmed rules, behavioral scenarios,
+pinned task context, independently verified changes, and durable correction history. The existing
+agency workflow remains available while a separate private agency consumer is developed.
+
+The **bounded G1 workflow is verified**, including real local execution, a fresh-agent handoff,
+and an isolated Cloudflare release/expiry/recovery rehearsal. Run `pnpm dev:real-local` for the real Git/Worker/Node
+stack, or `pnpm test:g1:local` for its bounded API and browser rehearsal. Knowledge, Outcomes and
+Review are available to owners/developers. New web projects default to this workflow; existing
+legacy projects retain explicit enablement.
+See [execution status](docs/agent-native/execution-status.md) for measured gates and
+[the local workflow](docs/agent-native/local-workflow.md) for setup and limits. Production native
+release and complete Git bundle restoration have additional requirements; existing agency
+production behavior is documented below.
 
 For developers: it runs entirely on **Cloudflare Workers** and **Cloudflare Artifacts**. You
 deploy it into your own Cloudflare account with one script, and agents work through a small CLI,

@@ -201,7 +201,10 @@ async function settleFolderInit(svc: Services, row: FolderInitRow, result: Runne
   const revisionId = artRevisionId(coords.repoId, receipt.commitSha);
   const bound = await svc.ledger(row.org_id).getHead(row.resource_id);
   if (bound && bound.revisionId !== revisionId) return failFolderInit(svc, row, "init_mismatch", `the folder's version is already ${bound.revisionId}`);
-  if (!bound) await bindHead(svc, row.org_id, row.resource_id, revisionId, userRef(row.requested_by));
+  if (await svc.ledger(row.org_id).getNativeProject(row.project_id)) {
+    const result = await svc.ledger(row.org_id).initializeNativeSource({ organizationId:row.org_id, projectId:row.project_id, actorId:row.requested_by, resourceId:row.resource_id, revisionId, idempotencyKey:`native-init:${row.resource_id}` });
+    if (!result.ok) throw conflict(result.code, result.detail ?? "native source initialization refused");
+  } else if (!bound) await bindHead(svc, row.org_id, row.resource_id, revisionId, userRef(row.requested_by));
   const now = svc.nowIso();
   const [done] = await svc.db.batch([
     svc.db

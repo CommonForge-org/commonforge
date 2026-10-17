@@ -55,7 +55,7 @@ describe("protocol", () => {
     expect(replies.get(1).result).toMatchObject({ protocolVersion: "2025-06-18", capabilities: { tools: {} }, serverInfo: { name: "commonforge", version: "0.1.0" } });
     expect(replies.get(1).result.instructions).toContain("sign_in");
     const tools = replies.get(2).result.tools;
-    expect(tools.map((t: { name: string }) => t.name)).toEqual(["sign_in", "who_am_i", "list_projects", "list_tasks", "create_task", "get_task", "checkout_task", "save_progress", "submit_task"]);
+    expect(tools.map((t: { name: string }) => t.name)).toEqual(["renew_task_authority", "inspect_attempt_results", "prepare_project_proposal", "exchange_task_handoff", "inspect_project_context", "propose_project_record", "sign_in", "who_am_i", "list_projects", "list_tasks", "create_task", "get_task", "checkout_task", "save_progress", "submit_task"]);
     for (const t of tools) {
       expect(t.inputSchema.type).toBe("object");
       expect(t).not.toHaveProperty("argv");

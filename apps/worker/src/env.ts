@@ -28,6 +28,10 @@ export interface Env {
   CF_API_TOKEN: string;
   /** optional: bearer that pull-mode runners present to `POST /api/runner/jobs/next` (unset: pull disabled) */
   COMMONFORGE_RUNNER_TOKEN?: string;
+  /** Loopback-only signed G1 scenario supervisor. Never a production execution backend. */
+  COMMONFORGE_LOCAL_RUNNER_URL?: string;
+  /** Trusted isolated HTTPS scenario supervisor. Requests/results are HMAC-bound; never caller selected. */
+  COMMONFORGE_SCENARIO_RUNNER_URL?: string;
   // ---- Task 22: previews and releases ----
   /** base URL of the dedicated preview Worker (another origin than the app); previews are `<url>/p/<org>/<previewId>/<token>/` */
   COMMONFORGE_PREVIEW_URL?: string;

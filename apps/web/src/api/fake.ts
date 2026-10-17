@@ -604,7 +604,7 @@ export class FakeApi implements CommonForgeApi {
   /** the empty project's folders (added by intake only) */
   private readonly handoverMounts: Mount[] = [];
   /** projects created at runtime (the two fixture projects are fixed) */
-  private readonly newProjects = new Map<string, { org: string; name: string; createdAt: string; mounts: Mount[] }>();
+  private readonly newProjects = new Map<string, { org: string; name: string; createdAt: string; mounts: Mount[]; mode?: "legacy" | "agent-native" }>();
   /**
    * the policy of every project but the Customer Portal (whose policy is `policy`): a new project
    * starts with none of the demo's checks, release or staging
@@ -1167,6 +1167,7 @@ export class FakeApi implements CommonForgeApi {
     this.project(org, pid);
     return {
       projectId: pid,
+      mode: this.newProjects.get(pid)?.mode ?? "legacy",
       name: this.projectName(pid),
       membershipRevision: 3,
       policyRevision: pid === FIXTURE_PROJECT ? this.policyRevision : this.otherPolicy(pid).revision,
@@ -1235,12 +1236,12 @@ export class FakeApi implements CommonForgeApi {
     return { policyRevision: this.policyRevision, policy: structuredClone(this.policy) };
   }
 
-  async createProject(org: string, name: string) {
+  async createProject(org: string, name: string, mode?: "legacy" | "agent-native") {
     this.log("createProject", org, name);
     this.org(org);
     this.needDev();
     const projectId = `p-${(0xc0de0000 + this.newProjects.size + 10).toString(16)}`;
-    this.newProjects.set(projectId, { org, name: name.trim(), createdAt: new Date(this.now()).toISOString(), mounts: [] });
+    this.newProjects.set(projectId, { org, name: name.trim(), createdAt: new Date(this.now()).toISOString(), mounts: [], ...(mode ? {mode} : {}) });
     // the worker gives a developer creator read + write on the new project
     if (this.role === "developer") this.grants.set(`u-developer|project|${projectId}`, ["read", "write"]);
     return { projectId, name: name.trim() };

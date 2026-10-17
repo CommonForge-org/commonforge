@@ -123,6 +123,7 @@ orgRoutes.patch("/orgs/:org/members/:user", async (c) => {
   const current = await getRole(svc.db, actor.orgId, target);
   if (!current) throw notFound("member not found");
   if (current === "owner" && body.role !== "owner" && (await ownerCount(svc.db, actor.orgId)) <= 1) throw conflict("last_owner", "an organization needs at least one owner");
+  const nativeTransition = current !== body.role ? await svc.ledger(actor.orgId).revokeNativeAuthority(actor.orgId, target) : null;
   await svc.db.prepare("UPDATE memberships SET role = ? WHERE org_id = ? AND user_id = ?").bind(body.role, actor.orgId, target).run();
   // a real role change keeps read grants only when the person leaves a developer role or was a
   // client: a client's write is "Can change" through tasks, which would become canonical write for a
@@ -140,6 +141,7 @@ orgRoutes.patch("/orgs/:org/members/:user", async (c) => {
   // Task 21 review M-7: viewers hold no edition grants
   if (body.role === "viewer") await revokeEditionAccess(svc, actor.orgId, target);
   await recordEvent(svc, { orgId: actor.orgId, actor: userRef(actor.userId), action: "member.role_changed", subjectKind: "user", subjectId: target, detail: { from: current, to: body.role } });
+  if(nativeTransition)await svc.ledger(actor.orgId).finishNativeAuthorityRevocation(actor.orgId,nativeTransition);
   return c.json({ userId: target, role: body.role });
 });
 
@@ -150,6 +152,7 @@ orgRoutes.delete("/orgs/:org/members/:user", async (c) => {
   const current = await getRole(svc.db, actor.orgId, target);
   if (!current) throw notFound("member not found");
   if (current === "owner" && (await ownerCount(svc.db, actor.orgId)) <= 1) throw conflict("last_owner", "an organization needs at least one owner");
+  const nativeTransition = await svc.ledger(actor.orgId).revokeNativeAuthority(actor.orgId, target);
   await svc.db.batch([
     svc.db.prepare("DELETE FROM memberships WHERE org_id = ? AND user_id = ?").bind(actor.orgId, target),
     svc.db.prepare("DELETE FROM grants WHERE org_id = ? AND user_id = ?").bind(actor.orgId, target),
@@ -157,6 +160,7 @@ orgRoutes.delete("/orgs/:org/members/:user", async (c) => {
   await revokeUserLeases(svc, actor.orgId, target);
   await revokeEditionAccess(svc, actor.orgId, target);
   await recordEvent(svc, { orgId: actor.orgId, actor: userRef(actor.userId), action: "member.removed", subjectKind: "user", subjectId: target });
+  await svc.ledger(actor.orgId).finishNativeAuthorityRevocation(actor.orgId,nativeTransition);
   return c.json({ ok: true });
 });
 
@@ -195,10 +199,12 @@ orgRoutes.put("/orgs/:org/grants", async (c) => {
     for (const o of existing) if (!ops.includes(o)) ops.push(o);
   }
   const before = await grantOperations(svc.db, actor.orgId, body.userId, body.scope.kind, body.scope.id);
+  const nativeTransition = before.some(op => !ops.includes(op)) ? await svc.ledger(actor.orgId).revokeNativeAuthority(actor.orgId, body.userId) : null;
   await putGrant(svc.db, { orgId: actor.orgId, userId: body.userId, scopeKind: body.scope.kind, scopeId: body.scope.id, operations: ops, grantedBy: actor.userId, now: svc.nowIso() });
   // N-2: narrowing write → read is lease loss, like a revocation
   if (before.includes("write") && !ops.includes("write")) await revokeUserLeases(svc, actor.orgId, body.userId);
   await recordEvent(svc, { orgId: actor.orgId, actor: userRef(actor.userId), action: "grant.put", subjectKind: body.scope.kind, subjectId: body.scope.id, detail: { userId: body.userId, operations: ops } });
+  if(nativeTransition)await svc.ledger(actor.orgId).finishNativeAuthorityRevocation(actor.orgId,nativeTransition);
   return c.json({ userId: body.userId, scope: body.scope, operations: ops.sort() });
 });
 
@@ -206,9 +212,11 @@ orgRoutes.delete("/orgs/:org/grants", async (c) => {
   const actor = await orgActor(c, c.req.param("org"), ["owner"]);
   const body = await readJson(c, GrantSchema.omit({ operations: true }));
   const svc = c.get("svc");
-  if (!(await deleteGrant(svc.db, actor.orgId, body.userId, body.scope.kind, body.scope.id))) throw notFound("grant not found");
+  const nativeTransition = await svc.ledger(actor.orgId).revokeNativeAuthority(actor.orgId, body.userId);
+  if (!(await deleteGrant(svc.db, actor.orgId, body.userId, body.scope.kind, body.scope.id))) {await svc.ledger(actor.orgId).finishNativeAuthorityRevocation(actor.orgId,nativeTransition);throw notFound("grant not found");}
   await revokeUserLeases(svc, actor.orgId, body.userId);
   await recordEvent(svc, { orgId: actor.orgId, actor: userRef(actor.userId), action: "grant.revoked", subjectKind: body.scope.kind, subjectId: body.scope.id, detail: { userId: body.userId } });
+  await svc.ledger(actor.orgId).finishNativeAuthorityRevocation(actor.orgId,nativeTransition);
   return c.json({ ok: true });
 });
 

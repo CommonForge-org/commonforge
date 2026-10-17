@@ -489,6 +489,7 @@ test.describe("fixture: eight-minute path", () => {
     await page.getByRole("button", { name: "New project" }).click();
     await expect(page.getByLabel("Project name")).toHaveValue("");
     await page.getByLabel("Project name").fill("Intranet");
+    await page.getByLabel("Project workflow").selectOption("legacy");
     await page.getByRole("button", { name: "Create project" }).click();
     await expect(page.getByRole("region", { name: "Folders" })).toBeVisible();
     await expect(page.getByText("This project has no folders yet.")).toBeVisible();
@@ -538,6 +539,7 @@ test.describe("fixture: eight-minute path", () => {
     await expect(page.getByRole("note")).toContainText("Fixture mode");
     await page.getByRole("button", { name: "New project" }).click();
     await page.getByLabel("Project name").fill("Intranet");
+    await page.getByLabel("Project workflow").selectOption("legacy");
     await page.getByRole("button", { name: "Create project" }).click();
     const add = page.getByRole("form", { name: "New folder" });
     await add.getByLabel("New folder").fill("media");
@@ -615,6 +617,7 @@ test.describe("fixture: eight-minute path", () => {
     await expect(page.getByRole("note")).toContainText("Fixture mode");
     await page.getByRole("button", { name: "New project" }).click();
     await page.getByLabel("Project name").fill("Intranet");
+    await page.getByLabel("Project workflow").selectOption("legacy");
     await page.getByRole("button", { name: "Create project" }).click();
     const add = page.getByRole("form", { name: "New folder" });
     await add.getByLabel("New folder").fill("media");
@@ -1069,6 +1072,7 @@ test.describe("fixture: getting started in a brand-new organization", () => {
     // 1. the checklist's New project opens the form
     await org.getByRole("button", { name: "New project" }).click();
     await page.getByLabel("Project name").fill("Bakery site");
+    await page.getByLabel("Project workflow").selectOption("legacy");
     await page.getByRole("button", { name: "Create project" }).click();
     await expect(page.getByRole("region", { name: "Folders" })).toBeVisible();
     await expect(page.getByText("This project has no folders yet.")).toBeVisible();

@@ -408,3 +408,47 @@ rows against any git-backed provider.
   (`staging_failed`) and then added by the accept anyway; GC keeps its uploads while a promotion claims
   the landing. If an object is missing at that point all the same, the change is added with event
   `files.change_objects_missing` (and a Worker error log) for a developer to re-upload the file.
+
+## G1 agent-native workflow (2026-10-17 implementation)
+
+The [execution record](agent-native/execution-status.md) distinguishes measured gates from plans.
+The new public reference workflow has real local Git/Node/preview execution, confirmed knowledge,
+scoped handoffs and independently verified atomic project acceptance. The existing agency mode,
+hashes, approval policy and migrations remain compatible.
+
+Current native limitations:
+
+- Web onboarding defaults to native mode; older API calls without `mode` stay legacy. Fresh dedicated
+  Git folders can initialize afterward, while existing-source attach/detach/import and shared staging,
+  legacy direct accept/restore/adoption and combined source-plus-knowledge acceptance are refused.
+- A replacement handoff supplies new pinned context and revokes the old task mandate. Transparent
+  extension of an existing attempt/token is not implemented. New/restored user grants do not refresh
+  native authority automatically. Explicit owner reconciliation checks current access, CAS and
+  idempotency; old decisions/mandates stay revoked. Failed directory transitions leave durable barriers
+  requiring quiescent operator recovery. Permanent attachment reservations can conservatively refuse
+  native enablement after historical/failed attachment; use fresh dedicated sources.
+- The trusted concrete automated verifier covers the synthetic scheduling fixture. Arbitrary candidate
+  test scripts cannot replace it. Supported local builds/checks use Linux namespaces and Node entrypoints
+  with dependency installation disabled. Local preview APIs support standalone Node-compatible modules,
+  with synthetic state per request; Workers-only APIs and production persistence are not emulated.
+- Namespace checks/builds do not mount the controller source/keys or host network. External developer
+  agents on the same OS account are outside that process boundary; this is not a multi-tenant host.
+- Native release bindings and five-minute observations are implemented, but the local Node source/runtime
+  verifier cannot authorize a different Cloudflare deployment runtime. A bounded actual workerd source/build verifier now uses the matching recipe/environment digest
+  and has passed local signed/Git/namespace tests. It supports one bundled vars-only Worker, no
+  external bindings/migrations/assets. Remote Artifacts integration and a real authorized isolated
+  Cloudflare release/expiry/recovery rehearsal passed on the existing isolated CI target; a trusted
+  supervisor must still be configured by each operator. Release rebuild bytes are separately approved. No native
+  production deployment or continuous monitoring is claimed.
+- Local historical source recovery is implemented and exercised through real browser/Git/runner
+  execution. It refuses declared/data effects and unsupported current mandatory artifact checks/contracts;
+  no database/external reversal is claimed. The bounded stateless cloud recovery gate passed;
+  this does not establish recovery of persistent or external effects.
+- Bundles preserve historical metadata and available evidence bytes without importing trust. They
+  explicitly report missing Git content, are not complete backups, and do not restore Git repositories.
+  Evidence bytes are conservatively retained across all history. Only unreferenced bytes can be deleted;
+  permanent tombstones prevent deletion/registration races. Automatic orphan expiry is not implemented.
+- The actual fresh-session rehearsal used a Codex subagent with no inherited conversation, persisted
+  context only, and independent execution of its result. This establishes same-family session continuity
+  for the declared fixture, not cross-vendor compatibility or general behavioral correctness.
+- Owner-role API/browser automation is verified. No domain-expert human usability study was observed.

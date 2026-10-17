@@ -37,6 +37,11 @@ import { lfsRoutes } from "./routes/lfs.js";
 import { fileChangeRoutes } from "./routes/file-changes.js";
 import { stagingRoutes } from "./routes/staging.js";
 import { promotionRoutes } from "./routes/promotions.js";
+import { nativeRecoveryRoutes } from "./routes/native-recovery.js";
+import { nativeProjectRoutes } from "./routes/native-projects.js";
+import { nativeRenewalRoutes } from "./routes/native-renewal.js";
+import { nativeSubmitRoutes } from "./routes/native-submit.js";
+import { nativePayloadRoutes } from "./routes/native-payloads.js";
 import { ARTIFACT_EVENTS_QUEUE, handleArtifactEventsBatch } from "./services/artifact-events.js";
 import { runGc } from "./services/gc.js";
 import { OUTBOX_DLQ, OUTBOX_QUEUE, handleOutboxBatch, handleOutboxDeadLetters } from "./services/outbox-consumer.js";
@@ -89,6 +94,11 @@ export function createApp(deps: Deps = defaultDeps) {
   app.use("/api/tasks/*", clientView(taskOrgOf));
 
   app.route("/api", authRoutes);
+  app.route("/api", nativeProjectRoutes);
+  app.route("/api", nativeRecoveryRoutes);
+  app.route("/api", nativeSubmitRoutes);
+  app.route("/api", nativeRenewalRoutes);
+  app.route("/api", nativePayloadRoutes);
   app.route("/api", orgRoutes);
   app.route("/api", projectRoutes);
   app.route("/api", resourceRoutes);

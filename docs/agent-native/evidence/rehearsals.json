@@ -1,0 +1,573 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-10-17",
+  "execution": "real-local Worker, Git smart HTTP, signed Node runner, namespace-isolated HTTP harness",
+  "baselineCommit": "d5ab4eb",
+  "implementationRevision": "654644f",
+  "syntheticScheduling": {
+    "organizationId": "o-0e7cde9b1e3e",
+    "projectId": "p-d62089b4b665",
+    "resourceId": "res-d34213b5478dba7a",
+    "initial": {
+      "taskId": "task-d1a40b49-814d-44c0-b8ee-6f5f49bbcd89",
+      "proposalId": "project:prop-78f6f665-b27d-424c-9fc4-6a6b001531e0:attempt:4703dff070b51e7c3094b2b23df9db89f71207b5fd76e477bb3e00f5f6179e3c",
+      "contextDigest": "1fcb421e67e4bd3b2b8629493167205160fe19699c0298aa81744b25e5ae7311",
+      "contextRuleRevisions": [
+        {
+          "id": "reschedule-rule",
+          "revision": 2
+        }
+      ],
+      "sourceRevision": "03701d2d7e212d6c4c251866550ce25504530633",
+      "scenarioCount": 4,
+      "acceptedManifest": "c1e54e391d329de50b8f25cadb78fabfb8ae626f0364877cf852fe7b8b99e738"
+    },
+    "corrected": {
+      "taskId": "task-ef52d612-cab1-497f-8d09-42975be3339a",
+      "proposalId": "project:prop-5d37e13c-2cb5-47c3-a000-ea5195ec78b8:attempt:fcac3bcaa6bd6e9f4048b56e970553c8389407192cd00ff4c1fe6e981ac7be43",
+      "contextDigest": "65a9408ad77bb5c015c67f7311e8bfbb7a0c8b2649b69c061e606059215dd500",
+      "contextRuleRevisions": [
+        {
+          "id": "reschedule-rule",
+          "revision": 4
+        }
+      ],
+      "sourceRevision": "f6077246b865d5f41e83b530f9da4f73970b4cd8",
+      "scenarioCount": 9,
+      "acceptedManifest": "8c84f547b35fd3ed73b4c5e4c86abf67a773e26732380b29cc766ede088e8063"
+    },
+    "gates": {
+      "realSourceApiWorkflow": "pass",
+      "independentlyVerifiedBehavior": "pass",
+      "persistedCorrectionInLaterContext": "pass",
+      "atomicAcceptance": "pass",
+      "freshAgent": "not_run",
+      "cloudRelease": "not_run",
+      "browserOwnerJourney": "not_run"
+    }
+  },
+  "selfDevelopment": {
+    "ownDevelopmentProject": true,
+    "sourceSnapshot": {
+      "commit": "394958877aca94b522b87dd973b1b9ffb9b5c826",
+      "fileCount": 929,
+      "exclusions": []
+    },
+    "organizationId": "o-61bb79f822aa",
+    "projectId": "p-0f364def536e",
+    "resourceId": "res-118c7648d9137702",
+    "initial": {
+      "taskId": "task-4c049861-5724-4f31-8231-f91f4ed0ad9f",
+      "proposalId": "project:prop-acf3980e-928c-4424-bc3e-dacff53702b3:attempt:820b3696076407207909864071c74238ecee3ed75cf7387f2a07d466161e79d6",
+      "contextDigest": "92b20949541c1b728e9c3df9130ddb2677128c2f15fb452d2dd56c8652b06863",
+      "contextRuleRevisions": [
+        {
+          "id": "reschedule-rule",
+          "revision": 2
+        }
+      ],
+      "sourceRevision": "c4ab8b5dbb6bf155aceefd20faad1fb893b748c3",
+      "supplementalObservedHealth": {
+        "ok": true,
+        "fixture": true,
+        "ruleVersion": 1,
+        "clock": "2026-10-17T12:00:00.000Z",
+        "timezone": "UTC"
+      },
+      "scenarioCount": 4,
+      "acceptedManifest": "b3bb0e481f6c1216d2ba3811a025decbe8de288a7301ca45c8ec351e2ac85fc4"
+    },
+    "corrected": {
+      "taskId": "task-97bcede5-d8f4-4cfe-a2d6-22505e297dfc",
+      "proposalId": "project:prop-6c1ca5c3-8011-44e4-95ac-6d9c9644d26f:attempt:2f0d4748b30365224395be9d1cf0e79ccd9b613ccb484400cc6d6e036a3820ad",
+      "contextDigest": "b4ca1daf81393ed00234ff8717eccf2c70049c35321ace377d573c79ff2e6cb2",
+      "contextRuleRevisions": [
+        {
+          "id": "reschedule-rule",
+          "revision": 4
+        }
+      ],
+      "sourceRevision": "f41703158db261448809bebd883fd1fc9c1335c2",
+      "supplementalObservedHealth": {
+        "ok": true,
+        "fixture": true,
+        "ruleVersion": 2,
+        "clock": "2026-10-17T12:00:00.000Z",
+        "timezone": "UTC"
+      },
+      "scenarioCount": 9,
+      "acceptedManifest": "b257aaf0f6bb0bcee6ac54d30d3f494d89042187286ad2fac25c65eb986d03ee"
+    },
+    "gates": {
+      "realSourceApiWorkflow": "pass",
+      "independentlyVerifiedBehavior": "pass",
+      "persistedCorrectionInLaterContext": "pass",
+      "atomicAcceptance": "pass",
+      "freshAgent": "not_run",
+      "cloudRelease": "not_run",
+      "browserOwnerJourney": "not_run"
+    }
+  },
+  "freshAgent": {
+    "agent": {
+      "canonicalIdentity": "/root/fresh_g1_continuity",
+      "facility": "Codex collaboration.spawn_agent",
+      "fork_turns": "none",
+      "model": "inherited default; independent model identifier not exposed by collaboration API",
+      "crossVendorClaim": false,
+      "originalConversationProvided": false,
+      "humanCorrectionRestated": false
+    },
+    "implementationAfterDigest": "cb1869d1331baabe556e3b7d98a3a0cc32a2b53a4fd08148f04031b624ef5f74",
+    "sourceRevision": "b264ae75c23fc77e3d93c9fa516c37221c189734",
+    "proposalId": "project:prop-fd10414f-a070-4641-b0d2-45baf7d05347:attempt:d0c4d3a2ea90bcf9cce3e49a6ff8ddfe7347b821b224f7f40dec892eb86510e3",
+    "envelopeDigest": "9734430fc654acf3527135954143e6c588cb4d85469a6f653eb6b347f0b33a57",
+    "acceptedManifest": "ae47b2fc8b6ec60c4b593c1ab4c7241e34a896e3a3b4d9ff0ec1c1f929bdbe87",
+    "acceptedSourceHeads": [
+      {
+        "resourceId": "res-118c7648d9137702",
+        "revisionId": "art:r2e5de28230bd926877ca0c7f8006dc9d7d8f303c:1f28e1b2d5a2a21aeef1eff23c37863d9bcd6705"
+      }
+    ],
+    "scenarioEvidence": [
+      {
+        "actor": "local-node-runner",
+        "attachments": [],
+        "author": "local-node-runner",
+        "buildDigest": "376bceb460763a5e57d96935565142eb5e1bb1aad592039bdd69277c5a2fc02b",
+        "completedAt": "2026-10-17T20:45:48.473Z",
+        "createdAt": "2026-10-17T20:45:48.473Z",
+        "envelopeDigest": "9734430fc654acf3527135954143e6c588cb4d85469a6f653eb6b347f0b33a57",
+        "id": "ev-run-ea6c976f2cd3021a98738179-exact-cutoff",
+        "method": "automated",
+        "organizationId": "o-61bb79f822aa",
+        "projectId": "p-0f364def536e",
+        "provenance": "runner-verified",
+        "result": "pass",
+        "runId": "run-ea6c976f2cd3021a98738179",
+        "runtimeRecipeDigest": "f7f1a717fa35c6e44498a86eafc7597613f3a001f04535cc6fceb38cfeeb7d1a",
+        "scenarioId": "exact-cutoff",
+        "scenarioRevision": 2,
+        "schemaVersion": 1,
+        "startedAt": "2026-10-17T20:45:48.428Z",
+        "summary": "expected HTTP behavior observed",
+        "supersedes": null,
+        "verifierDigest": "1ae4883c7bdd07e7fa6d9223ce29a493f2f83a169d5c72aa550ea36c28e3ce2f"
+      },
+      {
+        "actor": "local-node-runner",
+        "attachments": [],
+        "author": "local-node-runner",
+        "buildDigest": "376bceb460763a5e57d96935565142eb5e1bb1aad592039bdd69277c5a2fc02b",
+        "completedAt": "2026-10-17T20:45:48.473Z",
+        "createdAt": "2026-10-17T20:45:48.473Z",
+        "envelopeDigest": "9734430fc654acf3527135954143e6c588cb4d85469a6f653eb6b347f0b33a57",
+        "id": "ev-run-ea6c976f2cd3021a98738179-explicit-offset",
+        "method": "automated",
+        "organizationId": "o-61bb79f822aa",
+        "projectId": "p-0f364def536e",
+        "provenance": "runner-verified",
+        "result": "pass",
+        "runId": "run-ea6c976f2cd3021a98738179",
+        "runtimeRecipeDigest": "f7f1a717fa35c6e44498a86eafc7597613f3a001f04535cc6fceb38cfeeb7d1a",
+        "scenarioId": "explicit-offset",
+        "scenarioRevision": 2,
+        "schemaVersion": 1,
+        "startedAt": "2026-10-17T20:45:48.428Z",
+        "summary": "expected HTTP behavior observed",
+        "supersedes": null,
+        "verifierDigest": "1ae4883c7bdd07e7fa6d9223ce29a493f2f83a169d5c72aa550ea36c28e3ce2f"
+      },
+      {
+        "actor": "local-node-runner",
+        "attachments": [],
+        "author": "local-node-runner",
+        "buildDigest": "376bceb460763a5e57d96935565142eb5e1bb1aad592039bdd69277c5a2fc02b",
+        "completedAt": "2026-10-17T20:45:48.473Z",
+        "createdAt": "2026-10-17T20:45:48.473Z",
+        "envelopeDigest": "9734430fc654acf3527135954143e6c588cb4d85469a6f653eb6b347f0b33a57",
+        "id": "ev-run-ea6c976f2cd3021a98738179-inside-cutoff",
+        "method": "automated",
+        "organizationId": "o-61bb79f822aa",
+        "projectId": "p-0f364def536e",
+        "provenance": "runner-verified",
+        "result": "pass",
+        "runId": "run-ea6c976f2cd3021a98738179",
+        "runtimeRecipeDigest": "f7f1a717fa35c6e44498a86eafc7597613f3a001f04535cc6fceb38cfeeb7d1a",
+        "scenarioId": "inside-cutoff",
+        "scenarioRevision": 2,
+        "schemaVersion": 1,
+        "startedAt": "2026-10-17T20:45:48.428Z",
+        "summary": "expected HTTP behavior observed",
+        "supersedes": null,
+        "verifierDigest": "1ae4883c7bdd07e7fa6d9223ce29a493f2f83a169d5c72aa550ea36c28e3ce2f"
+      },
+      {
+        "actor": "local-node-runner",
+        "attachments": [],
+        "author": "local-node-runner",
+        "buildDigest": "376bceb460763a5e57d96935565142eb5e1bb1aad592039bdd69277c5a2fc02b",
+        "completedAt": "2026-10-17T20:45:48.473Z",
+        "createdAt": "2026-10-17T20:45:48.473Z",
+        "envelopeDigest": "9734430fc654acf3527135954143e6c588cb4d85469a6f653eb6b347f0b33a57",
+        "id": "ev-run-ea6c976f2cd3021a98738179-manager-no-travel-bypass",
+        "method": "automated",
+        "organizationId": "o-61bb79f822aa",
+        "projectId": "p-0f364def536e",
+        "provenance": "runner-verified",
+        "result": "pass",
+        "runId": "run-ea6c976f2cd3021a98738179",
+        "runtimeRecipeDigest": "f7f1a717fa35c6e44498a86eafc7597613f3a001f04535cc6fceb38cfeeb7d1a",
+        "scenarioId": "manager-no-travel-bypass",
+        "scenarioRevision": 2,
+        "schemaVersion": 1,
+        "startedAt": "2026-10-17T20:45:48.428Z",
+        "summary": "expected HTTP behavior observed",
+        "supersedes": null,
+        "verifierDigest": "1ae4883c7bdd07e7fa6d9223ce29a493f2f83a169d5c72aa550ea36c28e3ce2f"
+      },
+      {
+        "actor": "local-node-runner",
+        "attachments": [],
+        "author": "local-node-runner",
+        "buildDigest": "376bceb460763a5e57d96935565142eb5e1bb1aad592039bdd69277c5a2fc02b",
+        "completedAt": "2026-10-17T20:45:48.473Z",
+        "createdAt": "2026-10-17T20:45:48.473Z",
+        "envelopeDigest": "9734430fc654acf3527135954143e6c588cb4d85469a6f653eb6b347f0b33a57",
+        "id": "ev-run-ea6c976f2cd3021a98738179-manager-reason-required",
+        "method": "automated",
+        "organizationId": "o-61bb79f822aa",
+        "projectId": "p-0f364def536e",
+        "provenance": "runner-verified",
+        "result": "pass",
+        "runId": "run-ea6c976f2cd3021a98738179",
+        "runtimeRecipeDigest": "f7f1a717fa35c6e44498a86eafc7597613f3a001f04535cc6fceb38cfeeb7d1a",
+        "scenarioId": "manager-reason-required",
+        "scenarioRevision": 2,
+        "schemaVersion": 1,
+        "startedAt": "2026-10-17T20:45:48.428Z",
+        "summary": "expected HTTP behavior observed",
+        "supersedes": null,
+        "verifierDigest": "1ae4883c7bdd07e7fa6d9223ce29a493f2f83a169d5c72aa550ea36c28e3ce2f"
+      },
+      {
+        "actor": "local-node-runner",
+        "attachments": [],
+        "author": "local-node-runner",
+        "buildDigest": "376bceb460763a5e57d96935565142eb5e1bb1aad592039bdd69277c5a2fc02b",
+        "completedAt": "2026-10-17T20:45:48.473Z",
+        "createdAt": "2026-10-17T20:45:48.473Z",
+        "envelopeDigest": "9734430fc654acf3527135954143e6c588cb4d85469a6f653eb6b347f0b33a57",
+        "id": "ev-run-ea6c976f2cd3021a98738179-manager-reason-retained",
+        "method": "automated",
+        "organizationId": "o-61bb79f822aa",
+        "projectId": "p-0f364def536e",
+        "provenance": "runner-verified",
+        "result": "pass",
+        "runId": "run-ea6c976f2cd3021a98738179",
+        "runtimeRecipeDigest": "f7f1a717fa35c6e44498a86eafc7597613f3a001f04535cc6fceb38cfeeb7d1a",
+        "scenarioId": "manager-reason-retained",
+        "scenarioRevision": 2,
+        "schemaVersion": 1,
+        "startedAt": "2026-10-17T20:45:48.428Z",
+        "summary": "expected HTTP behavior observed",
+        "supersedes": null,
+        "verifierDigest": "1ae4883c7bdd07e7fa6d9223ce29a493f2f83a169d5c72aa550ea36c28e3ce2f"
+      },
+      {
+        "actor": "local-node-runner",
+        "attachments": [],
+        "author": "local-node-runner",
+        "buildDigest": "376bceb460763a5e57d96935565142eb5e1bb1aad592039bdd69277c5a2fc02b",
+        "completedAt": "2026-10-17T20:45:48.473Z",
+        "createdAt": "2026-10-17T20:45:48.473Z",
+        "envelopeDigest": "9734430fc654acf3527135954143e6c588cb4d85469a6f653eb6b347f0b33a57",
+        "id": "ev-run-ea6c976f2cd3021a98738179-outside-cutoff",
+        "method": "automated",
+        "organizationId": "o-61bb79f822aa",
+        "projectId": "p-0f364def536e",
+        "provenance": "runner-verified",
+        "result": "pass",
+        "runId": "run-ea6c976f2cd3021a98738179",
+        "runtimeRecipeDigest": "f7f1a717fa35c6e44498a86eafc7597613f3a001f04535cc6fceb38cfeeb7d1a",
+        "scenarioId": "outside-cutoff",
+        "scenarioRevision": 2,
+        "schemaVersion": 1,
+        "startedAt": "2026-10-17T20:45:48.428Z",
+        "summary": "expected HTTP behavior observed",
+        "supersedes": null,
+        "verifierDigest": "1ae4883c7bdd07e7fa6d9223ce29a493f2f83a169d5c72aa550ea36c28e3ce2f"
+      },
+      {
+        "actor": "local-node-runner",
+        "attachments": [],
+        "author": "local-node-runner",
+        "buildDigest": "376bceb460763a5e57d96935565142eb5e1bb1aad592039bdd69277c5a2fc02b",
+        "completedAt": "2026-10-17T20:45:48.473Z",
+        "createdAt": "2026-10-17T20:45:48.473Z",
+        "envelopeDigest": "9734430fc654acf3527135954143e6c588cb4d85469a6f653eb6b347f0b33a57",
+        "id": "ev-run-ea6c976f2cd3021a98738179-travel-block",
+        "method": "automated",
+        "organizationId": "o-61bb79f822aa",
+        "projectId": "p-0f364def536e",
+        "provenance": "runner-verified",
+        "result": "pass",
+        "runId": "run-ea6c976f2cd3021a98738179",
+        "runtimeRecipeDigest": "f7f1a717fa35c6e44498a86eafc7597613f3a001f04535cc6fceb38cfeeb7d1a",
+        "scenarioId": "travel-block",
+        "scenarioRevision": 2,
+        "schemaVersion": 1,
+        "startedAt": "2026-10-17T20:45:48.428Z",
+        "summary": "expected HTTP behavior observed",
+        "supersedes": null,
+        "verifierDigest": "1ae4883c7bdd07e7fa6d9223ce29a493f2f83a169d5c72aa550ea36c28e3ce2f"
+      },
+      {
+        "actor": "local-node-runner",
+        "attachments": [],
+        "author": "local-node-runner",
+        "buildDigest": "376bceb460763a5e57d96935565142eb5e1bb1aad592039bdd69277c5a2fc02b",
+        "completedAt": "2026-10-17T20:45:48.473Z",
+        "createdAt": "2026-10-17T20:45:48.473Z",
+        "envelopeDigest": "9734430fc654acf3527135954143e6c588cb4d85469a6f653eb6b347f0b33a57",
+        "id": "ev-run-ea6c976f2cd3021a98738179-unauthorized-override",
+        "method": "automated",
+        "organizationId": "o-61bb79f822aa",
+        "projectId": "p-0f364def536e",
+        "provenance": "runner-verified",
+        "result": "pass",
+        "runId": "run-ea6c976f2cd3021a98738179",
+        "runtimeRecipeDigest": "f7f1a717fa35c6e44498a86eafc7597613f3a001f04535cc6fceb38cfeeb7d1a",
+        "scenarioId": "unauthorized-override",
+        "scenarioRevision": 2,
+        "schemaVersion": 1,
+        "startedAt": "2026-10-17T20:45:48.428Z",
+        "summary": "expected HTTP behavior observed",
+        "supersedes": null,
+        "verifierDigest": "1ae4883c7bdd07e7fa6d9223ce29a493f2f83a169d5c72aa550ea36c28e3ce2f"
+      }
+    ],
+    "decision": {
+      "id": "fresh-decision-1792269948495",
+      "actor": "synthetic owner role through API; not an observed human usability session"
+    },
+    "gates": {
+      "freshAgentExecution": "pass",
+      "correctedRulePreserved": "pass",
+      "realGit": "pass",
+      "signedRunnerIntegration": "pass",
+      "independentScenarios": "pass",
+      "supplementalHealthBehavior": "pass",
+      "atomicAcceptance": "pass",
+      "cloudRelease": "not_run"
+    },
+    "supplementalAcceptedIntegration": {
+      "revisionId": "art:r2e5de28230bd926877ca0c7f8006dc9d7d8f303c:1f28e1b2d5a2a21aeef1eff23c37863d9bcd6705",
+      "implementationPath": "fixtures/scheduling/worker.mjs",
+      "fileDigest": "cb1869d1331baabe556e3b7d98a3a0cc32a2b53a4fd08148f04031b624ef5f74",
+      "equalsCandidateFileDigest": true,
+      "observedHealth": {
+        "ok": true,
+        "fixture": true,
+        "ruleVersion": 2,
+        "reviewReady": true,
+        "supportContact": "support@example.test",
+        "clock": "2026-10-17T12:00:00.000Z",
+        "timezone": "UTC"
+      },
+      "execution": "bubblewrap-linux-http",
+      "network": "none",
+      "controlPlaneMounted": false
+    }
+  },
+  "freshAgentInputs": {
+    "taskId": "task-ef28eef3-17e9-46eb-b917-bb090a3c4dba",
+    "organizationId": "o-61bb79f822aa",
+    "projectId": "p-0f364def536e",
+    "allowedInputFiles": [
+      "task.md",
+      ".commonforge/context.json",
+      ".commonforge/context.md"
+    ],
+    "allowedImplementationPath": "fixtures/scheduling/worker.mjs",
+    "inputDigests": {
+      "task.md": "29ea237db63c485470b0086a215766aea8da8648c0d501eebd5dc076083fb0a1",
+      ".commonforge/context.json": "48a6c317deca522f7073e52b9547b33fa7a32ba7e1d906b0e5a709da230b1c0b",
+      ".commonforge/context.md": "1012e47065eb42a76803ffa7ec4c1a08fd31409604326cddca923de588382c29"
+    },
+    "implementationBeforeDigest": "58643492a105acab332791ee6f7be833aaf20834d675af81b533113b639c6d7e",
+    "contextDigest": "48a6c317deca522f7073e52b9547b33fa7a32ba7e1d906b0e5a709da230b1c0b"
+  },
+  "humanValidation": "Synthetic owner-role API/browser automation; no observed domain-expert usability validation",
+  "cloudRelease": "not_run; current local source/runtime verifier cannot authorize production runtime",
+  "realPreviews": {
+    "organizationId": "o-2aa534fb16d3",
+    "projectId": "p-dd5a660fae57",
+    "previewEvidence": {
+      "previewId": "pv-551ed18e34b7f1bfc77c783e",
+      "sourceBinding": null,
+      "separateOrigin": true,
+      "staticHttpStatus": 200,
+      "apiHealth": {
+        "ok": true,
+        "fixture": true,
+        "ruleVersion": 2,
+        "clock": "2026-10-17T12:00:00.000Z",
+        "timezone": "UTC"
+      },
+      "managerResponse": {
+        "allowed": true,
+        "override": {
+          "actor": "manager",
+          "reason": "Preview override",
+          "recordedAt": "2026-10-17T12:00:00.000Z"
+        }
+      },
+      "execution": "real Worker preview authorization + local R2 + isolated Node HTTP module",
+      "privateLinkExcluded": true
+    },
+    "exactSourceMetadata": {
+      "previewId": "pv-551ed18e34b7f1bfc77c783e",
+      "state": "ready",
+      "proposalId": "prop-3a1bd331-65b1-4585-8cb8-15ec563202e7",
+      "proposalHash": "758bea469be890b1270063cb12bd087afd8c0d466651fbd42612284e6a7e9a6b",
+      "sources": {
+        "res-1dfc29dbd1442aff": "8acc510424266c35aa7e79047002996ae3833408"
+      },
+      "expiresAt": "2026-10-17T21:48:15.665Z"
+    },
+    "acceptedSourceHeads": [
+      {
+        "resourceId": "res-1dfc29dbd1442aff",
+        "revisionId": "art:r26fac43893cf1db67dfa1b1e3697a98bbc61354a:8acc510424266c35aa7e79047002996ae3833408"
+      }
+    ],
+    "sourceMappingMatchesEnvelope": true
+  },
+  "packagedRehearsal": {
+    "ownDevelopmentProject": false,
+    "organizationId": "o-1bf98492fc4e",
+    "projectId": "p-667fad7af833",
+    "resourceId": "res-2825168f0d7364a4",
+    "initial": {
+      "taskId": "task-f7f27b48-19c1-426d-89e5-321cd0724ca0",
+      "innerProposalId": "prop-e8f3ce91-dd1b-4b14-97b7-ec23ee521df8",
+      "proposalId": "project:prop-e8f3ce91-dd1b-4b14-97b7-ec23ee521df8:attempt:76610853bedcec21f95b48e3f043b1d5aa3c0c4550cf0a65e00857f8b27b5d2c",
+      "contextDigest": "564dba8c1416d0a871059f09a9633a1707757eedf26d36d9ab6369a4f61ebaf8",
+      "contextRuleRevisions": [
+        {
+          "id": "reschedule-rule",
+          "revision": 2
+        }
+      ],
+      "sourceRevision": "16c6b6bb9875c6795c92836703b4955de1267130",
+      "supplementalObservedHealth": {
+        "ok": true,
+        "fixture": true,
+        "ruleVersion": 1,
+        "clock": "2026-10-17T12:00:00.000Z",
+        "timezone": "UTC"
+      },
+      "scenarioCount": 4,
+      "acceptedManifest": "3d3aef8c57238f5f57326da5f5d042a5bebbd7398b3ccdc0c6b67ee7b0d700f9"
+    },
+    "corrected": {
+      "taskId": "task-071e2ad2-5d03-43be-a456-856dc7c26160",
+      "innerProposalId": "prop-d16d9274-4ead-4534-8a64-8d929e709204",
+      "proposalId": "project:prop-d16d9274-4ead-4534-8a64-8d929e709204:attempt:8d40f0fa30ae3d119ab729485dfc67397f3593548c8baea8c951c69bb4600d6c",
+      "contextDigest": "6ce4358399db5cbde6028e6ffe289862b5a6f1c4aa32b7cf847f476bbf009244",
+      "contextRuleRevisions": [
+        {
+          "id": "reschedule-rule",
+          "revision": 4
+        }
+      ],
+      "sourceRevision": "4c5b2da3c08ab6707c52428eca6a6f1d893ac9bf",
+      "supplementalObservedHealth": {
+        "ok": true,
+        "fixture": true,
+        "ruleVersion": 2,
+        "clock": "2026-10-17T12:00:00.000Z",
+        "timezone": "UTC"
+      },
+      "scenarioCount": 9,
+      "acceptedManifest": "b8c9b5b82a9bc15b83d9e9fb7e66f8f77540c3f6700f9de7b90385a84d26d04d"
+    },
+    "previewEvidence": {
+      "previewId": "pv-cdd877b5163c5750774e8b11",
+      "sourceBinding": null,
+      "separateOrigin": true,
+      "staticHttpStatus": 200,
+      "apiHealth": {
+        "ok": true,
+        "fixture": true,
+        "ruleVersion": 2,
+        "clock": "2026-10-17T12:00:00.000Z",
+        "timezone": "UTC"
+      },
+      "managerResponse": {
+        "allowed": true,
+        "override": {
+          "actor": "manager",
+          "reason": "Preview override",
+          "recordedAt": "2026-10-17T12:00:00.000Z"
+        }
+      },
+      "execution": "real Worker preview authorization + local R2 + isolated Node HTTP module",
+      "privateLinkExcluded": true
+    },
+    "gates": {
+      "realSourceApiWorkflow": "pass",
+      "independentlyVerifiedBehavior": "pass",
+      "persistedCorrectionInLaterContext": "pass",
+      "atomicAcceptance": "pass",
+      "freshAgent": "not_run",
+      "cloudRelease": "not_run",
+      "browserOwnerJourney": "pass"
+    },
+    "command": "PORT=8919 PREVIEW_PORT=8920 pnpm test:g1:local",
+    "browserAcceptance": {
+      "execution": "real-browser-real-worker-real-git-real-runner",
+      "organizationId": "o-1bf98492fc4e",
+      "projectId": "p-667fad7af833",
+      "proposalId": "project:prop-7967b202-1ab1-4ddf-bd23-ea3c184d6381:attempt:43b1ce01dc83ac7e57fc312571cfdc329bf261707308b0ee8d3310386947d82b",
+      "envelopeDigest": "a8f644719d4729a78f8671972457c40f04dc593484d288292bcca1951e067f80",
+      "scenarioCount": 9,
+      "acceptedInBrowser": true,
+      "inspectedExistingAcceptance": false,
+      "releaseClaimed": false
+    },
+    "verifierDefinition": "cf.scheduling-verifier/2 binds supervisor logic, host, examples; runtime pins Node version and architecture"
+  },
+  "continuation": {
+    "recordedAt": "2026-10-17",
+    "implementationRevision": "678970c (includes 98c4f57)",
+    "realNativeOnboarding": {
+      "command": "PORT=8939 PREVIEW_PORT=8940 pnpm test:g1:local",
+      "browserTestsPassed": 3,
+      "actualGitGenesis": true,
+      "screenshot": "../images/native-onboarding.png"
+    },
+    "cloudflareRuntime": {
+      "engine": "actual pinned workerd",
+      "signedGitBuildBridge": "pass",
+      "cloudDeployment": "not_run",
+      "productionRebuildByteEquivalence": "not_claimed",
+      "boundedShape": "one bundled vars-only Worker; no external bindings/migrations/assets"
+    },
+    "authorityAndGenesis": "actual SQLite race and fault regressions passed",
+    "liveGate": "pending authorized isolated target",
+    "fullG1": "not_achieved",
+    "historicalRecovery": {
+      "command": "PORT=8939 PREVIEW_PORT=8940 pnpm test:g1:local",
+      "browserTestsPassed": 4,
+      "realGitReconciliation": "pass",
+      "freshSignedScenarios": 9,
+      "repeatedCanonicalNamespaceScenarios": 9,
+      "knowledgePreserved": true,
+      "report": "recovery-report.json",
+      "cloudDeployment": "not_run",
+      "externalEffectsReversed": false
+    }
+  }
+}

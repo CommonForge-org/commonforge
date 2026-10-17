@@ -14,7 +14,7 @@ import { gateClient, type GateClient } from "./services/ops-gate.js";
 /** Who is calling. Agents act on behalf of the user holding the task lease (never with the user's full rights). */
 export type Principal =
   | { kind: "user"; userId: string; email: string }
-  | { kind: "agent"; taskId: string; orgId: string; leaseGeneration: number; leaseExpiresAt: number; holderUserId: string };
+  | { kind: "agent"; taskId: string; orgId: string; leaseGeneration: number; leaseExpiresAt: number; holderUserId: string; native?: {agentId:string;attemptId:string;mandateId:string;projectId:string;tokenHash:string} };
 
 export interface Services {
   env: Env;

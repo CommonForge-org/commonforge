@@ -17,7 +17,11 @@
     "test:live": "turbo run test:live",
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
-    "dev:local": "scripts/dev-local.sh"
+    "dev:local": "scripts/dev-local.sh",
+    "dev:real-local": "scripts/dev-real-worker.sh",
+    "test:g1:provider": "scripts/dev-real-local.sh",
+    "test:g1:local": "scripts/test-g1-local.sh",
+    "test:g1:browser": "pnpm --filter @commonforge-org/web exec playwright test -c playwright.native.config.ts"
   },
   "devDependencies": {
     "@types/node": "^26.6.4",

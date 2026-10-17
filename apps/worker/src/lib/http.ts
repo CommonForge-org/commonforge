@@ -5,6 +5,7 @@
 import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { z } from "zod";
+import { ProjectError } from '@commonforge-org/core';
 import { parseLedgerRpcError } from "../ledger/errors.js";
 
 export class ApiError extends Error {
@@ -58,9 +59,12 @@ export function parseQuery<S extends z.ZodType>(c: Context, schema: S): z.infer<
 
 /** Map any thrown error to a JSON response (ApiError, ledger RPC errors, zod, provider errors). */
 export function toErrorResponse(c: Context, e: unknown): Response {
+  if(e instanceof ProjectError)return c.json(errorBody(e.code,e.message),e.code==='authority_denied'?403:409);
   if (e instanceof ApiError) return c.json(errorBody(e.code, e.message, e.details), e.status);
   if (e instanceof z.ZodError) return c.json(errorBody("invalid_request", e.message), 400);
   const message = e instanceof Error ? e.message : String(e);
+  const projectRefusal = /project_refused:([a-z_]+): (.*)/s.exec(message);
+  if (projectRefusal) return c.json(errorBody(projectRefusal[1]!, projectRefusal[2]!), projectRefusal[1] === 'authority_denied' ? 403 : 409);
   if (/^ledger_[a-z_]+: /.test(message)) {
     const { code, status } = parseLedgerRpcError(e);
     return c.json(errorBody(code, message), status as ContentfulStatusCode);

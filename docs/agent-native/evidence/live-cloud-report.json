@@ -1,0 +1,366 @@
+{
+  "schemaVersion": 1,
+  "mode": "actual-isolated-cloud-api",
+  "controlWorker": "commonforge-ci-worker",
+  "releaseWorker": "cfci-o-4ae6d5c3d1b7-g1-an21-1792274344159",
+  "organizationId": "o-4ae6d5c3d1b7",
+  "projectId": "p-53ef44c0cb6f",
+  "resourceId": "res-846b6d07377ec725",
+  "cycles": {
+    "initial": {
+      "acceptedManifest": "05fc083c29ea5caef2d11abe94fce97467e878336653ae33ee400465e1838df3",
+      "sourceHeads": [
+        {
+          "resourceId": "res-846b6d07377ec725",
+          "revisionId": "art:qm4l0gls7nabbn5r:ee9df614abd4c1d10ce094c0a56123b7c9da168a"
+        }
+      ],
+      "envelopeDigest": "2d1bfeda0bca8fa749a774f756e8ae97f9fa8247f5544fa9d541e33e7baf05da",
+      "knowledgeHead": "bf8e8629146054fd8abe8f72d226b76ab65bf449df330b23066671cbed56b70e",
+      "contextDigest": "1054bfc7c600940dce78a7a911775de99547a8a00fc91bc51b8e4fd9a2d76a01",
+      "scenarioCount": 9
+    },
+    "later": {
+      "acceptedManifest": "86ce4ed053029a180b518f0d85c189eab860850921633fc91cc3965ea4008b09",
+      "sourceHeads": [
+        {
+          "resourceId": "res-846b6d07377ec725",
+          "revisionId": "art:qm4l0gls7nabbn5r:8ba3e1564b6f225c30ea1fa0c6a38c2882e5fccf"
+        }
+      ],
+      "envelopeDigest": "084db699624ba9d929accf0ff355d19c1bfe324a52eecb55acf09d297d8c103a",
+      "knowledgeHead": "bf8e8629146054fd8abe8f72d226b76ab65bf449df330b23066671cbed56b70e",
+      "contextDigest": "a80e8d9f2baff59ed69c0b62ff09fda99bd2d50d0ac0ea02c85bf5b11e3926c9",
+      "scenarioCount": 9
+    }
+  },
+  "releases": {
+    "initial": {
+      "releaseId": "rel-e4618516f2fa987ff64714cf",
+      "manifestHash": "05fc083c29ea5caef2d11abe94fce97467e878336653ae33ee400465e1838df3",
+      "acceptedVersionId": "av-000000000002",
+      "outputDigest": "27940a79f4355cacbe140cb96aa5d1180fc84103e16a911d83337004c156ee45",
+      "envDigest": "03cb0e175a340fdc1f18df0179b1851c2f92c8fc6eca5d09335f54162ff96c34",
+      "healthStateAtObservation": "healthy",
+      "freshUntil": "2026-10-17T22:08:08.138Z",
+      "liveVersionObservation": {
+        "release": "rel-e4618516f2fa987ff64714cf",
+        "version": "g1-synthetic-scheduling",
+        "variant": "initial"
+      },
+      "deployedScenarios": [
+        {
+          "scenarioId": "exact-cutoff",
+          "result": "pass",
+          "execution": "actual Cloudflare HTTPS Worker",
+          "releaseId": "rel-e4618516f2fa987ff64714cf",
+          "outputDigest": "27940a79f4355cacbe140cb96aa5d1180fc84103e16a911d83337004c156ee45"
+        },
+        {
+          "scenarioId": "inside-cutoff",
+          "result": "pass",
+          "execution": "actual Cloudflare HTTPS Worker",
+          "releaseId": "rel-e4618516f2fa987ff64714cf",
+          "outputDigest": "27940a79f4355cacbe140cb96aa5d1180fc84103e16a911d83337004c156ee45"
+        },
+        {
+          "scenarioId": "outside-cutoff",
+          "result": "pass",
+          "execution": "actual Cloudflare HTTPS Worker",
+          "releaseId": "rel-e4618516f2fa987ff64714cf",
+          "outputDigest": "27940a79f4355cacbe140cb96aa5d1180fc84103e16a911d83337004c156ee45"
+        },
+        {
+          "scenarioId": "travel-block",
+          "result": "pass",
+          "execution": "actual Cloudflare HTTPS Worker",
+          "releaseId": "rel-e4618516f2fa987ff64714cf",
+          "outputDigest": "27940a79f4355cacbe140cb96aa5d1180fc84103e16a911d83337004c156ee45"
+        },
+        {
+          "scenarioId": "unauthorized-override",
+          "result": "pass",
+          "execution": "actual Cloudflare HTTPS Worker",
+          "releaseId": "rel-e4618516f2fa987ff64714cf",
+          "outputDigest": "27940a79f4355cacbe140cb96aa5d1180fc84103e16a911d83337004c156ee45"
+        },
+        {
+          "scenarioId": "manager-reason-required",
+          "result": "pass",
+          "execution": "actual Cloudflare HTTPS Worker",
+          "releaseId": "rel-e4618516f2fa987ff64714cf",
+          "outputDigest": "27940a79f4355cacbe140cb96aa5d1180fc84103e16a911d83337004c156ee45"
+        },
+        {
+          "scenarioId": "manager-reason-retained",
+          "result": "pass",
+          "execution": "actual Cloudflare HTTPS Worker",
+          "releaseId": "rel-e4618516f2fa987ff64714cf",
+          "outputDigest": "27940a79f4355cacbe140cb96aa5d1180fc84103e16a911d83337004c156ee45"
+        },
+        {
+          "scenarioId": "manager-no-travel-bypass",
+          "result": "pass",
+          "execution": "actual Cloudflare HTTPS Worker",
+          "releaseId": "rel-e4618516f2fa987ff64714cf",
+          "outputDigest": "27940a79f4355cacbe140cb96aa5d1180fc84103e16a911d83337004c156ee45"
+        },
+        {
+          "scenarioId": "explicit-offset",
+          "result": "pass",
+          "execution": "actual Cloudflare HTTPS Worker",
+          "releaseId": "rel-e4618516f2fa987ff64714cf",
+          "outputDigest": "27940a79f4355cacbe140cb96aa5d1180fc84103e16a911d83337004c156ee45"
+        }
+      ],
+      "recordedObservationId": "release-observation:4804cce5efb5dd542eee7657d696ba6e04359cefa45f85b6d940ffc184918d3e"
+    },
+    "later": {
+      "releaseId": "rel-a110871893c7f24e9ed056fa",
+      "manifestHash": "86ce4ed053029a180b518f0d85c189eab860850921633fc91cc3965ea4008b09",
+      "acceptedVersionId": "av-000000000003",
+      "outputDigest": "730c91efd4c17b60a395555f86484a94ca7083e560d3367f4cb06c14b51d626b",
+      "envDigest": "03cb0e175a340fdc1f18df0179b1851c2f92c8fc6eca5d09335f54162ff96c34",
+      "healthStateAtObservation": "healthy",
+      "freshUntil": "2026-10-17T22:14:41.065Z",
+      "liveVersionObservation": {
+        "release": "rel-a110871893c7f24e9ed056fa",
+        "version": "g1-synthetic-scheduling",
+        "variant": "later"
+      },
+      "deployedScenarios": [
+        {
+          "scenarioId": "exact-cutoff",
+          "result": "pass",
+          "execution": "actual Cloudflare HTTPS Worker",
+          "releaseId": "rel-a110871893c7f24e9ed056fa",
+          "outputDigest": "730c91efd4c17b60a395555f86484a94ca7083e560d3367f4cb06c14b51d626b"
+        },
+        {
+          "scenarioId": "inside-cutoff",
+          "result": "pass",
+          "execution": "actual Cloudflare HTTPS Worker",
+          "releaseId": "rel-a110871893c7f24e9ed056fa",
+          "outputDigest": "730c91efd4c17b60a395555f86484a94ca7083e560d3367f4cb06c14b51d626b"
+        },
+        {
+          "scenarioId": "outside-cutoff",
+          "result": "pass",
+          "execution": "actual Cloudflare HTTPS Worker",
+          "releaseId": "rel-a110871893c7f24e9ed056fa",
+          "outputDigest": "730c91efd4c17b60a395555f86484a94ca7083e560d3367f4cb06c14b51d626b"
+        },
+        {
+          "scenarioId": "travel-block",
+          "result": "pass",
+          "execution": "actual Cloudflare HTTPS Worker",
+          "releaseId": "rel-a110871893c7f24e9ed056fa",
+          "outputDigest": "730c91efd4c17b60a395555f86484a94ca7083e560d3367f4cb06c14b51d626b"
+        },
+        {
+          "scenarioId": "unauthorized-override",
+          "result": "pass",
+          "execution": "actual Cloudflare HTTPS Worker",
+          "releaseId": "rel-a110871893c7f24e9ed056fa",
+          "outputDigest": "730c91efd4c17b60a395555f86484a94ca7083e560d3367f4cb06c14b51d626b"
+        },
+        {
+          "scenarioId": "manager-reason-required",
+          "result": "pass",
+          "execution": "actual Cloudflare HTTPS Worker",
+          "releaseId": "rel-a110871893c7f24e9ed056fa",
+          "outputDigest": "730c91efd4c17b60a395555f86484a94ca7083e560d3367f4cb06c14b51d626b"
+        },
+        {
+          "scenarioId": "manager-reason-retained",
+          "result": "pass",
+          "execution": "actual Cloudflare HTTPS Worker",
+          "releaseId": "rel-a110871893c7f24e9ed056fa",
+          "outputDigest": "730c91efd4c17b60a395555f86484a94ca7083e560d3367f4cb06c14b51d626b"
+        },
+        {
+          "scenarioId": "manager-no-travel-bypass",
+          "result": "pass",
+          "execution": "actual Cloudflare HTTPS Worker",
+          "releaseId": "rel-a110871893c7f24e9ed056fa",
+          "outputDigest": "730c91efd4c17b60a395555f86484a94ca7083e560d3367f4cb06c14b51d626b"
+        },
+        {
+          "scenarioId": "explicit-offset",
+          "result": "pass",
+          "execution": "actual Cloudflare HTTPS Worker",
+          "releaseId": "rel-a110871893c7f24e9ed056fa",
+          "outputDigest": "730c91efd4c17b60a395555f86484a94ca7083e560d3367f4cb06c14b51d626b"
+        }
+      ],
+      "recordedObservationId": "release-observation:a594355811fd8a675aa4ba6998f0e32050d1ca1d3f795c19efe97b8b8291529b"
+    },
+    "recovery": {
+      "releaseId": "rel-fcaf0253609f3ab5adf11532",
+      "manifestHash": "c7077a80ca3ea2f0880f2f621b8133eeafadb5b4b4088f3cd36b50a86280b512",
+      "acceptedVersionId": "av-000000000004",
+      "outputDigest": "d801d3e2948eb4c9343c6361ccc8c741b393b870c25ed2c9c8b4b0d2caff49fc",
+      "envDigest": "03cb0e175a340fdc1f18df0179b1851c2f92c8fc6eca5d09335f54162ff96c34",
+      "healthStateAtObservation": "healthy",
+      "freshUntil": "2026-10-17T22:15:26.519Z",
+      "liveVersionObservation": {
+        "release": "rel-fcaf0253609f3ab5adf11532",
+        "version": "g1-synthetic-scheduling",
+        "variant": "initial"
+      },
+      "deployedScenarios": [
+        {
+          "scenarioId": "exact-cutoff",
+          "result": "pass",
+          "execution": "actual Cloudflare HTTPS Worker",
+          "releaseId": "rel-fcaf0253609f3ab5adf11532",
+          "outputDigest": "d801d3e2948eb4c9343c6361ccc8c741b393b870c25ed2c9c8b4b0d2caff49fc"
+        },
+        {
+          "scenarioId": "inside-cutoff",
+          "result": "pass",
+          "execution": "actual Cloudflare HTTPS Worker",
+          "releaseId": "rel-fcaf0253609f3ab5adf11532",
+          "outputDigest": "d801d3e2948eb4c9343c6361ccc8c741b393b870c25ed2c9c8b4b0d2caff49fc"
+        },
+        {
+          "scenarioId": "outside-cutoff",
+          "result": "pass",
+          "execution": "actual Cloudflare HTTPS Worker",
+          "releaseId": "rel-fcaf0253609f3ab5adf11532",
+          "outputDigest": "d801d3e2948eb4c9343c6361ccc8c741b393b870c25ed2c9c8b4b0d2caff49fc"
+        },
+        {
+          "scenarioId": "travel-block",
+          "result": "pass",
+          "execution": "actual Cloudflare HTTPS Worker",
+          "releaseId": "rel-fcaf0253609f3ab5adf11532",
+          "outputDigest": "d801d3e2948eb4c9343c6361ccc8c741b393b870c25ed2c9c8b4b0d2caff49fc"
+        },
+        {
+          "scenarioId": "unauthorized-override",
+          "result": "pass",
+          "execution": "actual Cloudflare HTTPS Worker",
+          "releaseId": "rel-fcaf0253609f3ab5adf11532",
+          "outputDigest": "d801d3e2948eb4c9343c6361ccc8c741b393b870c25ed2c9c8b4b0d2caff49fc"
+        },
+        {
+          "scenarioId": "manager-reason-required",
+          "result": "pass",
+          "execution": "actual Cloudflare HTTPS Worker",
+          "releaseId": "rel-fcaf0253609f3ab5adf11532",
+          "outputDigest": "d801d3e2948eb4c9343c6361ccc8c741b393b870c25ed2c9c8b4b0d2caff49fc"
+        },
+        {
+          "scenarioId": "manager-reason-retained",
+          "result": "pass",
+          "execution": "actual Cloudflare HTTPS Worker",
+          "releaseId": "rel-fcaf0253609f3ab5adf11532",
+          "outputDigest": "d801d3e2948eb4c9343c6361ccc8c741b393b870c25ed2c9c8b4b0d2caff49fc"
+        },
+        {
+          "scenarioId": "manager-no-travel-bypass",
+          "result": "pass",
+          "execution": "actual Cloudflare HTTPS Worker",
+          "releaseId": "rel-fcaf0253609f3ab5adf11532",
+          "outputDigest": "d801d3e2948eb4c9343c6361ccc8c741b393b870c25ed2c9c8b4b0d2caff49fc"
+        },
+        {
+          "scenarioId": "explicit-offset",
+          "result": "pass",
+          "execution": "actual Cloudflare HTTPS Worker",
+          "releaseId": "rel-fcaf0253609f3ab5adf11532",
+          "outputDigest": "d801d3e2948eb4c9343c6361ccc8c741b393b870c25ed2c9c8b4b0d2caff49fc"
+        }
+      ],
+      "recordedObservationId": "release-observation:7d9aae84735a86c19833e22e8445579ca0b273cfb919b861767e5e09145cb349"
+    }
+  },
+  "expiry": {
+    "releaseId": "rel-e4618516f2fa987ff64714cf",
+    "observedAt": "2026-10-17T22:08:21.714Z",
+    "freshUntil": "2026-10-17T22:08:08.138Z",
+    "healthState": "unknown",
+    "actualClock": true
+  },
+  "recovery": {
+    "proposalId": "recovery:04828ace8de811374f33bd419285ab7653b95a2d6bd1d3d707320743439bca26",
+    "acceptedManifest": "c7077a80ca3ea2f0880f2f621b8133eeafadb5b4b4088f3cd36b50a86280b512",
+    "sourceHeads": [
+      {
+        "resourceId": "res-846b6d07377ec725",
+        "revisionId": "art:qm4l0gls7nabbn5r:ee9df614abd4c1d10ce094c0a56123b7c9da168a"
+      }
+    ],
+    "knowledgePreserved": true
+  },
+  "currentManifest": "c7077a80ca3ea2f0880f2f621b8133eeafadb5b4b4088f3cd36b50a86280b512",
+  "currentKnowledgeHead": "bf8e8629146054fd8abe8f72d226b76ab65bf449df330b23066671cbed56b70e",
+  "verifierDigest": "d2e51e5868af9b4bb0753da719f670f06c1d072231994f017efee572ef670bd6",
+  "runtimeRecipeDigest": "22ba828fb6a403eba5a9eee39421c6b8717730165cca74b348706057fb2b65f3",
+  "observations": [
+    {
+      "schemaVersion": 1,
+      "organizationId": "o-4ae6d5c3d1b7",
+      "projectId": "p-53ef44c0cb6f",
+      "id": "release-observation:4804cce5efb5dd542eee7657d696ba6e04359cefa45f85b6d940ffc184918d3e",
+      "author": "service:release-health",
+      "createdAt": "2026-10-17T22:03:08.194Z",
+      "releaseId": "rel-e4618516f2fa987ff64714cf",
+      "manifestHash": "05fc083c29ea5caef2d11abe94fce97467e878336653ae33ee400465e1838df3",
+      "buildDigest": "27940a79f4355cacbe140cb96aa5d1180fc84103e16a911d83337004c156ee45",
+      "environment": "production",
+      "target": "api",
+      "checkDigest": "bad404eaeba98030aaaed206f833e8360cd775e08be7a429e31d02a086b35a45",
+      "result": "healthy",
+      "observedAt": "2026-10-17T22:03:08.138Z",
+      "freshUntil": "2026-10-17T22:08:08.138Z",
+      "summary": "Deployment identity and configured release health observation; source scenario evidence is separate."
+    },
+    {
+      "schemaVersion": 1,
+      "organizationId": "o-4ae6d5c3d1b7",
+      "projectId": "p-53ef44c0cb6f",
+      "id": "release-observation:a594355811fd8a675aa4ba6998f0e32050d1ca1d3f795c19efe97b8b8291529b",
+      "author": "service:release-health",
+      "createdAt": "2026-10-17T22:09:41.125Z",
+      "releaseId": "rel-a110871893c7f24e9ed056fa",
+      "manifestHash": "86ce4ed053029a180b518f0d85c189eab860850921633fc91cc3965ea4008b09",
+      "buildDigest": "730c91efd4c17b60a395555f86484a94ca7083e560d3367f4cb06c14b51d626b",
+      "environment": "production",
+      "target": "api",
+      "checkDigest": "45883e22e96a9373cc603e937e779d7d5d4eaad9e7131f84b67f4b5bea2dd9a7",
+      "result": "healthy",
+      "observedAt": "2026-10-17T22:09:41.065Z",
+      "freshUntil": "2026-10-17T22:14:41.065Z",
+      "summary": "Deployment identity and configured release health observation; source scenario evidence is separate."
+    },
+    {
+      "schemaVersion": 1,
+      "organizationId": "o-4ae6d5c3d1b7",
+      "projectId": "p-53ef44c0cb6f",
+      "id": "release-observation:7d9aae84735a86c19833e22e8445579ca0b273cfb919b861767e5e09145cb349",
+      "author": "service:release-health",
+      "createdAt": "2026-10-17T22:10:26.586Z",
+      "releaseId": "rel-fcaf0253609f3ab5adf11532",
+      "manifestHash": "c7077a80ca3ea2f0880f2f621b8133eeafadb5b4b4088f3cd36b50a86280b512",
+      "buildDigest": "d801d3e2948eb4c9343c6361ccc8c741b393b870c25ed2c9c8b4b0d2caff49fc",
+      "environment": "production",
+      "target": "api",
+      "checkDigest": "ec5f565292cc956f88fc016010c0dfb495c4614f5df49a1630ad23d0aad4d917",
+      "result": "healthy",
+      "observedAt": "2026-10-17T22:10:26.519Z",
+      "freshUntil": "2026-10-17T22:15:26.519Z",
+      "summary": "Deployment identity and configured release health observation; source scenario evidence is separate."
+    }
+  ],
+  "liveReleaseId": "rel-fcaf0253609f3ab5adf11532",
+  "gates": {
+    "actualInitialCloudRelease": "pass",
+    "actualFreshnessExpiry": "pass",
+    "actualRecoveryCloudRelease": "pass"
+  },
+  "noProductionTarget": true,
+  "newPersistentInfrastructureProvisioned": false,
+  "noExternalEffectsReversed": true
+}

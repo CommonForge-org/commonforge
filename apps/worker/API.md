@@ -1873,3 +1873,88 @@ and prints the manual Email Service steps (item 5); `scripts/teardown.sh` remove
      `COMMONFORGE_DEPLOY_API_TOKEN` a dedicated token with *Workers Scripts: Edit* and *Workers KV
      Storage: Edit* (it creates the org KV namespaces) on the deploy account. Install each with
      `cd apps/worker && pnpm exec wrangler secret put <NAME>`, then roll the broad dev token.
+
+## Agent-native project protocol 1 (G1)
+
+Existing projects retain legacy behavior. Owner/developer routes require access to every project
+source; incomplete required context refuses without describing hidden dependencies. Records reside in
+OrgLedger. D1 indexes do not authorize native acceptance.
+
+- `GET /api/orgs/:org/projects/:pid/native` → `{protocolVersion:1,state:null|ProjectState}`.
+- `POST …/native/enable {idempotencyKey}`: owner-only, permanent, settled legacy work and exclusive
+  source membership required. Genesis source has no retroactive behavioral evidence.
+- `POST …/native/commands`: strict `ProjectCommandSchema`, `expectedGeneration`, `idempotencyKey`.
+  Knowledge/outcome/scenario drafts, confirmations, corrections, immutable `archiveScenario`, exact decisions, manual observations,
+  and acceptance. Server checks current authority again inside acceptance. Public callers cannot
+  provide runner provenance or create their own mandates/attempts.
+- `GET …/native/{outcomes,knowledge,scenarios,proposals,decisions,evidence,manifests,observations,attempts}`
+  supports `cursor` offset and `limit` ≤100, returning `{items,nextCursor,generation}`.
+- `POST /api/tasks/:id/native/handoff {agentId}` issues a code (15-minute exchange window); only a
+  person can issue it. Replacement revokes previous mandates for that task.
+- `POST /api/tasks/:id/native/renew {mandateId,revision,expectedGeneration,idempotencyKey,agentId}`
+  issues a human-authorized replacement with new attempt/context and fresh checkout required.
+  Exact usable retries are idempotent; agents cannot renew themselves. See `docs/agent-native/renewal.md`.
+- `POST /api/auth/task/verify {code}` consumes it once and returns a task lease, attempt, one-hour
+  mandate and materialized context. It creates no user session.
+- `GET /api/tasks/:id/native/context` returns pinned JSON/Markdown/digest plus current generation and
+  a separate `knowledgeStale` flag. `GET …/native/results` exposes only the token's own attempt.
+- `POST …/native/commands` permits scoped draft corrections and knowledge-only proposal submission. Source envelopes use
+  `native/proposals`, which also verifies the inner artifact proposal belongs to this exact task.
+- `POST …/native/submit {}` prepares the task's candidates and queues/joins actual artifact integration.
+- `POST …/native/proposals {innerProposalId,expectedGeneration,idempotencyKey,outcome?}` freezes the
+  outer source envelope after exact integration. All required scenarios come from confirmed state.
+- `POST /api/orgs/:org/projects/:pid/native/proposals/:proposal/verify {idempotencyKey}` calls the
+  configured signed supervisor (loopback only for a local control plane, or operator-pinned HTTPS). Requests/results use explicit protocol 1; unsupported
+  runtime/verifier/set/signature/subject fails closed. Job budgets and result ingestion are durable.
+  Candidate execution failures after established isolation may carry signed error evidence; preflight,
+  transport or unavailable isolation records `execution:not-established` without behavioral evidence.
+  Late valid superseded results remain job history and cannot satisfy current acceptance.
+- `GET …/native/proposals/:proposal/verifications?cursor=0&limit=50` returns bounded durable
+  owner/developer run history; task `native/results` filters it to that token’s own attempt.
+  Replaying a terminal verification key returns the historical result without another dispatch.
+- `PUT|GET|DELETE …/native/attachments/:sha256`: ≤1 MiB digest-checked project evidence bytes. DELETE
+  refuses every referenced historical payload; tombstones serialize against evidence registration.
+- `GET …/native/bundle?includePayloads=1` exports validated history and retained evidence bytes with
+  explicit source/attachment completeness. `POST /api/orgs/:org/native/import
+  {name,idempotencyKey,bundle}` creates fresh local authority, draft knowledge and an untrusted archive;
+  it does not restore Git or authorize imported evidence. The portable `bundle` defaults to
+  `cf.project-bundle/2` and includes exact inert ancestor bundles in `lineage`, retaining their digests
+  and payloads across repeated imports. Responses advertise `bundleVersions: [1,2]`. Request
+  `bundleVersion=1` for the original schema only when no imported lineage would be lost; unsupported
+  versions and lossy version-1 exports refuse. The separate `importedHistory` field remains compatible.
+  Both versions retain the original 16 MiB JSON and per-payload 8 MiB limits. Version 2 additionally
+  bounds local and ancestor content to 8 MiB decoded payloads, 1,000 entries, 32 ancestors and eight
+  lineage levels. Exceeding bounds refuses rather than truncating history.
+
+Source acceptance invokes existing `planCommit` checks and writes artifact heads plus project manifest
+in the same SQLite transaction. Native source locks also block legacy queue acceptance, restore and
+head adoption. Fresh dedicated folders initialize atomically; existing source attachment/detach and
+staging mutations are unsupported after enablement. Native release
+preparation/publish/deploy require a manifest mapping and matching runtime; legacy-prepared releases
+cannot bypass it. See `docs/agent-native/release-rehearsal.md` for runtime prerequisites and actual isolated live evidence.
+
+Stable refusal codes include `revision_conflict`, `knowledge_stale`, `context_too_large`,
+`context_forbidden`, `mandate_revoked`, `mandate_expired`, `mandate_scope_denied`,
+`scenario_evidence_missing`, `scenario_evidence_invalid`, `review_subject_changed`,
+`project_mode_unsupported`, `authority_denied`, `idempotency_conflict`, `unsupported_version`,
+`recovery_unsupported` and `bundle_invalid`. Historical passes are immutable; applicability is computed.
+
+
+Native onboarding: `POST /api/orgs/:org/projects {name,mode:"agent-native"}` creates empty native genesis
+for an owner/developer. Web creation defaults to this mode; omitted API mode remains legacy for v1
+clients. `POST …/folders` reserves a fresh source then initializes its first Git commit and manifest
+atomically. No prior verification is invented. Permanent attachment reservations serialize legacy
+sharing against native ownership; failed/former attachments can conservatively prevent conversion.
+`POST …/native/authorities/:principal/reconcile {expectedGeneration,idempotencyKey}` lets an active
+owner enroll/restore a current owner/developer with complete source access, using CAS/idempotency.
+Authority revision advances; prior decisions/mandates stay invalid. Pending directory changes block
+reconciliation; interrupted barriers require quiescent operator recovery (see local-workflow.md).
+
+
+`POST …/native/recoveries {manifestHash,expectedGeneration,idempotencyKey}` prepares exact historical
+source under current requirements with no fabricated task/inner proposal. Current complete write
+access is required. Run fresh scenarios with the existing verification endpoint, record an exact
+allowed-role decision, and accept via native commands. Artifact restore and manifest commit atomically;
+current knowledge stays unchanged, canonical Git ref reconciliation is queued. Preparation/acceptance
+refuse declared/data effects and current mandatory legacy checks/contracts the recovery adapter cannot
+execute. Recovery is separate from deployment, and imported archives cannot authorize local recovery.

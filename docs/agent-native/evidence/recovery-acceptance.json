@@ -1,0 +1,17 @@
+{
+  "execution": "real-browser-real-worker-real-git-real-runner",
+  "organizationId": "o-b6b1c2e1dcd4",
+  "projectId": "p-7b4c0356cc01",
+  "historicalManifest": "730751843df0de9cb48e91464406edcc6c03407f539da4a617402247b9c91b19",
+  "acceptedManifest": "1f7e07c0ef8f79b43376bee372c367b2aef414369ff37748439760e240c28893",
+  "sourceHeads": [
+    {
+      "resourceId": "res-bf8526cefc7ba546",
+      "revisionId": "art:r9add6081b7aadde16e2967cfa4179fdffbd37675:fc3eaace6d4c2386848babe50365917dcd6ae51c"
+    }
+  ],
+  "knowledgeHead": "03a044536383a9212bf5a728f64b22f48c62bbdb516d7186a3587119de3037b6",
+  "scenarioCount": 9,
+  "releaseClaimed": false,
+  "externalEffectsReversed": false
+}

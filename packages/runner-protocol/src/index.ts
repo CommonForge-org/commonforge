@@ -16,3 +16,4 @@ export * from './materialize.js';
 export * from './runner-wire.js';
 export * from './release.js';
 export * from './apply-files.js';
+export * from './project-scenarios.js';

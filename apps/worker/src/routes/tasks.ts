@@ -148,7 +148,7 @@ taskRoutes.post("/orgs/:org/projects/:pid/tasks", async (c) => {
   const svc = c.get("svc");
   const project = await loadProject();
   const task = await createTask(svc, actor, project, body);
-  return c.json(presentTask(task, await listWorkspaces(svc, task.task_id), seesCanonical(actor.role)), 201);
+  return c.json(presentTask(task, await listWorkspaces(svc, task.task_id), seesCanonical(actor.role), await svc.ledger(task.org_id).getNativeProject(task.project_id) ? {projectProtocolVersion:1} : {}), 201);
 });
 
 /**
@@ -238,7 +238,8 @@ taskRoutes.get("/tasks/:id", async (c) => {
   }
   const ws = await listWorkspaces(svc, task.task_id);
   const handles = await Promise.all(ws.map((w) => (w.provider === "artifacts" ? ledger.getWorkspace(w.task_workspace_id) : null)));
-  const out = presentTask(task, ws, seesCanonical(actor.role), { candidates: list });
+  const nativeMode=!!(await ledger.getNativeProject(task.project_id));
+  const out = presentTask(task, ws, seesCanonical(actor.role), { candidates: list, ...(nativeMode ? {projectProtocolVersion:1} : {}) });
   // task repo URLs only for the task's agent, its assignee and owners (I-1); never a client's own
   // session (staging mode): only their agent, the lease token, gets coordinates
   const seesRepos = actor.agent || actor.role === "owner" || (seesCanonical(actor.role) && task.lease_holder === actor.userId);
@@ -259,6 +260,7 @@ taskRoutes.post("/tasks/:id/lease", async (c) => {
   const { task, actor } = await loadTask(c);
   const body = await readJson(c, z.object({ ttlSeconds: z.number().int().min(300).max(MAX_LEASE_SECONDS).default(DEFAULT_LEASE_SECONDS) }));
   const svc = c.get("svc");
+  if (await svc.ledger(task.org_id).getNativeProject(task.project_id)) throw conflict('project_mode_unsupported','use the task-scoped project handoff');
   if (!["ready", "running"].includes(task.state)) throw conflict("task_not_ready", `task is ${task.state}`);
   // M-4: taking over someone else's live lease is an owner action
   const live = task.lease_hash !== null && (task.lease_expires_at ?? 0) > svc.now().getTime();

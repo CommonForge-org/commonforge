@@ -1,0 +1,194 @@
+{
+  "schemaVersion": 1,
+  "execution": "real-browser-acceptance-followed-by-real-Git-and-isolated-HTTP",
+  "organizationId": "o-b6b1c2e1dcd4",
+  "projectId": "p-7b4c0356cc01",
+  "historicalManifest": "730751843df0de9cb48e91464406edcc6c03407f539da4a617402247b9c91b19",
+  "recoveryAcceptedManifest": "1f7e07c0ef8f79b43376bee372c367b2aef414369ff37748439760e240c28893",
+  "recoveryEnvelopeDigest": "19b18e1116bb6a640715063fd83ee9c7a7d63df71162dd88699dcd8ea84ab43d",
+  "acceptedArtifactVersion": "av-000000000005",
+  "knowledgeHead": "03a044536383a9212bf5a728f64b22f48c62bbdb516d7186a3587119de3037b6",
+  "knowledgeGeneration": 11,
+  "knowledgePreserved": true,
+  "exactHistoricalSourceRestored": true,
+  "evidence": [
+    {
+      "id": "ev-run-8f33772753ec245096103b4b-exact-cutoff",
+      "runId": "run-8f33772753ec245096103b4b",
+      "scenarioId": "exact-cutoff",
+      "scenarioRevision": 2,
+      "verifierDigest": "9eb9aba18b37ea58700625f076bb2c486070f24da452febbe735ca2004e738cb",
+      "result": "pass",
+      "provenance": "runner-verified",
+      "envelopeDigest": "19b18e1116bb6a640715063fd83ee9c7a7d63df71162dd88699dcd8ea84ab43d",
+      "buildDigest": "fd4e1747c269501ca4b6513817c746d91d1cb2d6d72863bb158c9b4ad0218865"
+    },
+    {
+      "id": "ev-run-8f33772753ec245096103b4b-explicit-offset",
+      "runId": "run-8f33772753ec245096103b4b",
+      "scenarioId": "explicit-offset",
+      "scenarioRevision": 2,
+      "verifierDigest": "9eb9aba18b37ea58700625f076bb2c486070f24da452febbe735ca2004e738cb",
+      "result": "pass",
+      "provenance": "runner-verified",
+      "envelopeDigest": "19b18e1116bb6a640715063fd83ee9c7a7d63df71162dd88699dcd8ea84ab43d",
+      "buildDigest": "fd4e1747c269501ca4b6513817c746d91d1cb2d6d72863bb158c9b4ad0218865"
+    },
+    {
+      "id": "ev-run-8f33772753ec245096103b4b-inside-cutoff",
+      "runId": "run-8f33772753ec245096103b4b",
+      "scenarioId": "inside-cutoff",
+      "scenarioRevision": 2,
+      "verifierDigest": "9eb9aba18b37ea58700625f076bb2c486070f24da452febbe735ca2004e738cb",
+      "result": "pass",
+      "provenance": "runner-verified",
+      "envelopeDigest": "19b18e1116bb6a640715063fd83ee9c7a7d63df71162dd88699dcd8ea84ab43d",
+      "buildDigest": "fd4e1747c269501ca4b6513817c746d91d1cb2d6d72863bb158c9b4ad0218865"
+    },
+    {
+      "id": "ev-run-8f33772753ec245096103b4b-manager-no-travel-bypass",
+      "runId": "run-8f33772753ec245096103b4b",
+      "scenarioId": "manager-no-travel-bypass",
+      "scenarioRevision": 2,
+      "verifierDigest": "9eb9aba18b37ea58700625f076bb2c486070f24da452febbe735ca2004e738cb",
+      "result": "pass",
+      "provenance": "runner-verified",
+      "envelopeDigest": "19b18e1116bb6a640715063fd83ee9c7a7d63df71162dd88699dcd8ea84ab43d",
+      "buildDigest": "fd4e1747c269501ca4b6513817c746d91d1cb2d6d72863bb158c9b4ad0218865"
+    },
+    {
+      "id": "ev-run-8f33772753ec245096103b4b-manager-reason-required",
+      "runId": "run-8f33772753ec245096103b4b",
+      "scenarioId": "manager-reason-required",
+      "scenarioRevision": 2,
+      "verifierDigest": "9eb9aba18b37ea58700625f076bb2c486070f24da452febbe735ca2004e738cb",
+      "result": "pass",
+      "provenance": "runner-verified",
+      "envelopeDigest": "19b18e1116bb6a640715063fd83ee9c7a7d63df71162dd88699dcd8ea84ab43d",
+      "buildDigest": "fd4e1747c269501ca4b6513817c746d91d1cb2d6d72863bb158c9b4ad0218865"
+    },
+    {
+      "id": "ev-run-8f33772753ec245096103b4b-manager-reason-retained",
+      "runId": "run-8f33772753ec245096103b4b",
+      "scenarioId": "manager-reason-retained",
+      "scenarioRevision": 2,
+      "verifierDigest": "9eb9aba18b37ea58700625f076bb2c486070f24da452febbe735ca2004e738cb",
+      "result": "pass",
+      "provenance": "runner-verified",
+      "envelopeDigest": "19b18e1116bb6a640715063fd83ee9c7a7d63df71162dd88699dcd8ea84ab43d",
+      "buildDigest": "fd4e1747c269501ca4b6513817c746d91d1cb2d6d72863bb158c9b4ad0218865"
+    },
+    {
+      "id": "ev-run-8f33772753ec245096103b4b-outside-cutoff",
+      "runId": "run-8f33772753ec245096103b4b",
+      "scenarioId": "outside-cutoff",
+      "scenarioRevision": 2,
+      "verifierDigest": "9eb9aba18b37ea58700625f076bb2c486070f24da452febbe735ca2004e738cb",
+      "result": "pass",
+      "provenance": "runner-verified",
+      "envelopeDigest": "19b18e1116bb6a640715063fd83ee9c7a7d63df71162dd88699dcd8ea84ab43d",
+      "buildDigest": "fd4e1747c269501ca4b6513817c746d91d1cb2d6d72863bb158c9b4ad0218865"
+    },
+    {
+      "id": "ev-run-8f33772753ec245096103b4b-travel-block",
+      "runId": "run-8f33772753ec245096103b4b",
+      "scenarioId": "travel-block",
+      "scenarioRevision": 2,
+      "verifierDigest": "9eb9aba18b37ea58700625f076bb2c486070f24da452febbe735ca2004e738cb",
+      "result": "pass",
+      "provenance": "runner-verified",
+      "envelopeDigest": "19b18e1116bb6a640715063fd83ee9c7a7d63df71162dd88699dcd8ea84ab43d",
+      "buildDigest": "fd4e1747c269501ca4b6513817c746d91d1cb2d6d72863bb158c9b4ad0218865"
+    },
+    {
+      "id": "ev-run-8f33772753ec245096103b4b-unauthorized-override",
+      "runId": "run-8f33772753ec245096103b4b",
+      "scenarioId": "unauthorized-override",
+      "scenarioRevision": 2,
+      "verifierDigest": "9eb9aba18b37ea58700625f076bb2c486070f24da452febbe735ca2004e738cb",
+      "result": "pass",
+      "provenance": "runner-verified",
+      "envelopeDigest": "19b18e1116bb6a640715063fd83ee9c7a7d63df71162dd88699dcd8ea84ab43d",
+      "buildDigest": "fd4e1747c269501ca4b6513817c746d91d1cb2d6d72863bb158c9b4ad0218865"
+    }
+  ],
+  "sourceChecks": [
+    {
+      "resourceId": "res-bf8526cefc7ba546",
+      "revisionId": "art:r9add6081b7aadde16e2967cfa4179fdffbd37675:fc3eaace6d4c2386848babe50365917dcd6ae51c",
+      "canonicalGitSha": "fc3eaace6d4c2386848babe50365917dcd6ae51c",
+      "actualGitSmartHttp": "pass",
+      "reconciliation": "synced",
+      "implementationPath": "worker.mjs",
+      "moduleDigest": "b80dac1f89fb488a4b5a5b4ab66ea632cac1fa1970a46f77ff01ed48c449d2e2",
+      "isolatedHealth": {
+        "ok": true,
+        "fixture": true,
+        "ruleVersion": 2,
+        "clock": "2026-10-17T12:00:00.000Z",
+        "timezone": "UTC"
+      },
+      "repeatedScenarioResults": [
+        {
+          "scenarioId": "exact-cutoff",
+          "result": "pass",
+          "detail": "expected HTTP behavior observed"
+        },
+        {
+          "scenarioId": "inside-cutoff",
+          "result": "pass",
+          "detail": "expected HTTP behavior observed"
+        },
+        {
+          "scenarioId": "outside-cutoff",
+          "result": "pass",
+          "detail": "expected HTTP behavior observed"
+        },
+        {
+          "scenarioId": "travel-block",
+          "result": "pass",
+          "detail": "expected HTTP behavior observed"
+        },
+        {
+          "scenarioId": "unauthorized-override",
+          "result": "pass",
+          "detail": "expected HTTP behavior observed"
+        },
+        {
+          "scenarioId": "manager-reason-required",
+          "result": "pass",
+          "detail": "expected HTTP behavior observed"
+        },
+        {
+          "scenarioId": "manager-reason-retained",
+          "result": "pass",
+          "detail": "expected HTTP behavior observed"
+        },
+        {
+          "scenarioId": "manager-no-travel-bypass",
+          "result": "pass",
+          "detail": "expected HTTP behavior observed"
+        },
+        {
+          "scenarioId": "explicit-offset",
+          "result": "pass",
+          "detail": "expected HTTP behavior observed"
+        }
+      ],
+      "execution": "bubblewrap-linux-http",
+      "network": "none",
+      "controlPlaneMounted": false
+    }
+  ],
+  "gates": {
+    "ownerBrowserRecovery": "pass",
+    "freshSignedScenarios": "pass",
+    "exactAcceptedHistoricalRefs": "pass",
+    "realGitReconciliation": "pass",
+    "independentRestoredRuntime": "pass",
+    "currentKnowledgePreserved": "pass",
+    "cloudDeployment": "not_run"
+  },
+  "releaseClaimed": false,
+  "externalEffectsReversed": false
+}
