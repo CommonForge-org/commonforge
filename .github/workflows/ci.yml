@@ -93,8 +93,10 @@ jobs:
           name: g1-sanitized-results
           path: |
             .g1-artifacts/local-ci/report.json
+            .g1-artifacts/local-ci/recovery-report.json
             apps/web/test-results/native/**/*.png
             apps/web/test-results/native/**/source-acceptance.json
+            apps/web/test-results/native/**/recovery-acceptance.json
           retention-days: 7
 
   # Secrets are not readable in a job-level `if`, so detect them in a tiny job first.

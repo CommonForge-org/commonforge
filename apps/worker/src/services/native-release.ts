@@ -12,7 +12,7 @@ export function nativeReleaseSubject(state:ProjectState,sources:Record<string,st
  const s=ProjectStateSchema.parse(state);const m=s.manifests.at(-1);
  if(!m || m.behavior!=='verified' || m.knowledgeHead!==s.knowledgeHead || m.envelopeDigest===null) throw conflict('scenario_evidence_missing','release requires a verified accepted source manifest under current knowledge');
  const p=s.proposals.find(p=>p.digest===m.envelopeDigest);
- if(!p || p.envelope.innerProposalId===null || p.envelope.policyRevision!==s.policyRevision) throw conflict('review_subject_changed','accepted source proposal or policy is unavailable');
+ if(!p || p.envelope.innerProposalId===null&&p.envelope.recovery===null || p.envelope.policyRevision!==s.policyRevision) throw conflict('review_subject_changed','accepted source proposal or policy is unavailable');
  const manifestHeads=Object.fromEntries(m.sourceHeads.map(h=>[h.resourceId,h.revisionId]));
  if(canonicalJson(sorted(manifestHeads))!==canonicalJson(sorted(Object.fromEntries(s.sourceHeads.map(h=>[h.resourceId,h.revisionId])))) || Object.entries(sources).some(([id,ref])=>manifestHeads[id]!==ref) || !Object.keys(sources).length) throw conflict('review_subject_changed','release sources do not match the accepted project manifest');
  const runtime=nativeRuntimeRecipeDigest(recipe,environment);

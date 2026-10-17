@@ -154,3 +154,37 @@ test('new project onboarding defaults to native knowledge and initializes a dedi
   expect(state.manifests.at(-1).behavior).toBe('historical-unverified');
   await page.screenshot({path:info.outputPath('native-onboarding.png'),fullPage:true});
 });
+
+test('owner verifies and accepts historical source recovery under current requirements', async ({page},info)=>{
+  test.skip(!process.env.COMMONFORGE_NATIVE_REVIEW_REPORT,'Requires the actual corrected source workflow and accepted later browser proposal.');
+  const report=JSON.parse(readFileSync(process.env.COMMONFORGE_NATIVE_REVIEW_REPORT!,'utf8')) as {organizationId:string;projectId:string;scenarioCount:number};
+  await signedIn(page);
+  await page.goto(`/o/${report.organizationId}/p/${report.projectId}/review`);
+  const before=await page.evaluate(async ({org,pid})=>(await (await fetch(`/api/orgs/${org}/projects/${pid}/native`,{credentials:'same-origin'})).json()).state,{org:report.organizationId,pid:report.projectId});
+  const target=[...before.manifests].reverse().find((m:any)=>m.behavior==='verified'&&m.knowledgeHead===before.knowledgeHead&&m.sourceHeads.length===before.sourceHeads.length&&m.sourceHeads.some((head:any)=>before.sourceHeads.some((current:any)=>current.resourceId===head.resourceId&&current.revisionId!==head.revisionId)));
+  expect(target,'rehearsal must include a prior corrected implementation and later accepted source').toBeTruthy();
+  await page.getByRole('button',{name:`Review recovery to project version ${target.sequence}`,exact:true}).click();
+  const recovery=page.locator('article[data-proposal-id]').filter({has:page.getByRole('heading',{name:'Historical source recovery',exact:true})}).first();
+  await expect(recovery).toBeVisible();
+  await expect(recovery.getByText('Restores exact historical source under current requirements',{exact:false})).toBeVisible();
+  await recovery.getByRole('button',{name:'Run required automated scenarios',exact:true}).click();
+  await expect(recovery.getByText('pass · Verified runner execution',{exact:false})).toHaveCount(report.scenarioCount,{timeout:120000});
+  await recovery.getByLabel('Review explanation').fill('Reviewed exact historical source with fresh execution under the current corrected rule. This does not restore knowledge, deploy, or reverse external effects.');
+  await recovery.getByRole('button',{name:'Approve exact change',exact:true}).click();
+  await expect(recovery.getByRole('button',{name:'Accept project version',exact:true})).toBeVisible();
+  await recovery.getByRole('button',{name:'Accept project version',exact:true}).click();
+  await expect(recovery.getByText('Accepted',{exact:true})).toBeVisible();
+  const after=await page.evaluate(async ({org,pid})=>(await (await fetch(`/api/orgs/${org}/projects/${pid}/native`,{credentials:'same-origin'})).json()).state,{org:report.organizationId,pid:report.projectId});
+  expect(after.sourceHeads).toEqual(target.sourceHeads);
+  expect(after.knowledgeHead).toBe(before.knowledgeHead);
+  expect(after.knowledge).toEqual(before.knowledge);
+  expect(after.manifests.at(-1).behavior).toBe('verified');
+  // Acceptance schedules durable ref reconciliation; keep the real stack alive until it finishes.
+  for(const head of target.sourceHeads)await expect.poll(()=>page.evaluate(async ({org,head})=>{
+    const response=await fetch(`/api/orgs/${org}/resources/${head.resourceId}`,{credentials:'same-origin'});
+    if(!response.ok)return false;
+    const resource=await response.json();return resource.head?.revisionId===head.revisionId&&resource.head?.reconciliation==='synced';
+  },{org:report.organizationId,head}),{timeout:90000}).toBe(true);
+  await page.screenshot({path:info.outputPath('recovery-accepted.png'),fullPage:true});
+  writeFileSync(info.outputPath('recovery-acceptance.json'),JSON.stringify({execution:'real-browser-real-worker-real-git-real-runner',organizationId:report.organizationId,projectId:report.projectId,historicalManifest:target.hash,acceptedManifest:after.manifests.at(-1).hash,sourceHeads:after.sourceHeads,knowledgeHead:after.knowledgeHead,scenarioCount:report.scenarioCount,releaseClaimed:false,externalEffectsReversed:false},null,2));
+});

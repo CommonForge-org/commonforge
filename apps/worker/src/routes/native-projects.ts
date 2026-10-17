@@ -11,8 +11,9 @@ import { orgActor, readableProject, canReadResource, canWriteResource, taskActor
 import { listMounts, getProject, getRole, projectPolicy } from '../services/directory.js';
 import { getTask, listWorkspaces, revokeWorkspaceWriteTokens } from '../services/tasks.js';
 import { leaseTokenHash } from '../services/auth.js';
-import { acceptInputFor, afterProposalAccepted, currentApprovals } from '../services/proposals.js';
+import { acceptInputFor, afterProposalAccepted, currentApprovals, approvalRoles } from '../services/proposals.js';
 import { userRef } from '../services/events.js';
+import { assertNativeRecoveryEffects } from '../services/native-recovery.js';
 import { nativeVerifierUrl, nativeVerifierCapabilities } from '../services/native-verifier.js';
 import { exportNativePayloads } from '../services/native-payloads.js';
 
@@ -80,12 +81,20 @@ nativeProjectRoutes.post(`${root}/commands`,async c=>{
   const actor=await orgActor(c,c.req.param('org'),['owner','developer']);const pid=c.req.param('pid');
   const state=await nativeState(c,actor,pid);if(!state)throw notFound();
   const command=await readJson(c,ProjectCommandSchema);const svc=c.get('svc'),ledger=svc.ledger(actor.orgId);
+  if(command.type==='prepareProposal' && command.record.envelope.recovery)throw forbidden('mandate_scope_denied','prepare recovery through the dedicated recovery endpoint');
   // Agent mandate/attempt creation is performed only by the scoped handoff service.
   if(['issueMandate','exchangeHandoff'].includes(command.type))throw forbidden('mandate_scope_denied','use a task handoff');
   if(command.type==='recordEvidence' && command.record.provenance!=='human-attested')throw forbidden('scenario_evidence_invalid','automated evidence must come from a verified runner');
   let input:Awaited<ReturnType<typeof acceptInputFor>>|undefined;
   if(command.type==='accept'){
     const proposal=state.proposals.find(p=>p.id===command.proposalId);if(!proposal)throw notFound();
+    if(proposal.envelope.recovery){
+      await assertNativeRecoveryEffects(svc,state);
+      for(const head of proposal.envelope.sourceHeads)if(!await canWriteResource(svc,actor,head.resourceId))throw forbidden('no_write_grant');
+      const decision=state.decisions.find(d=>d.id===command.decisionId),allowed=await approvalRoles(svc,actor.orgId,pid);
+      const role=decision?await getRole(svc.db,actor.orgId,decision.author):null,recorded=state.authorities.find(a=>a.principalId===decision?.author);
+      if(!decision || !role || !allowed.includes(role) || !recorded || recorded.role==='agent' || !allowed.includes(recorded.role))throw forbidden('authority_denied','recovery decision requires a currently allowed project approver');
+    }
     if(proposal.envelope.innerProposalId){
       const inner=await ledger.getProposal(proposal.envelope.innerProposalId);if(!inner)throw notFound();
       for(const r of [...inner.resourceChanges,...inner.assetManifestChanges])if(!await canWriteResource(svc,actor,r.resourceId))throw forbidden('no_write_grant');

@@ -66,6 +66,7 @@ import {
   executeRestore,
   applyProjectCommand,
   planProjectAccept,
+  validateProjectRecovery,
   applyWrites,
   createNativeGenesis,
   importProjectBundle,
@@ -455,6 +456,13 @@ export class OrgLedger extends DurableObject<Env> {
       if(!s.authorities.some(a=>a.principalId===actorId&&a.active&&a.role!=='agent'))throw new ProjectError('authority_denied','human authority required');
       const p=s.proposals.find(p=>p.digest===request.envelopeDigest);
       if(!p || request.organizationId!==organizationId || request.projectId!==projectId || p.envelope.expectedKnowledgeHead!==s.knowledgeHead || p.envelope.expectedParent!==s.manifests.at(-1)?.hash || p.envelope.policyRevision!==s.policyRevision)throw new ProjectError('knowledge_stale','proposal requirements changed');
+      if(p.envelope.recovery){
+        validateProjectRecovery(s,p.envelope);
+        if(!s.authorities.some(a=>a.principalId===p.author&&a.active&&a.role!=='agent'))throw new ProjectError('authority_denied','recovery requester authority unavailable');
+        const prior=tx.nativeJob(projectId,key);
+        if(prior){const old=ScenarioVerificationRequestSchema.parse(JSON.parse(prior.request));if(old.envelopeDigest!==request.envelopeDigest)throw new ProjectError('idempotency_conflict','verification key already used');return canonicalJson(prior);}
+        if(tx.nativeJobCount(projectId,p.digest)>=10)throw new ProjectError('mandate_scope_denied','recovery verification job budget exhausted');
+      }else{
       const mandate=s.mandates.filter(m=>m.id===p.envelope.mandateId).at(-1);
       const attempt=s.attempts.find(a=>a.id===p.envelope.attemptId);
       if(!mandate||!attempt||mandate.revokedAt||Date.parse(mandate.expiresAt)<=Date.parse(this.#now())||mandate.revision!==p.envelope.mandateRevision||attempt.mandateId!==mandate.id||attempt.status==='revoked'||!s.authorities.some(a=>a.principalId===mandate.issuer&&a.active&&a.role!=='agent'))throw new ProjectError('mandate_revoked','verification mandate unavailable');
@@ -463,6 +471,7 @@ export class OrgLedger extends DurableObject<Env> {
       if(prior){const old=ScenarioVerificationRequestSchema.parse(JSON.parse(prior.request));if(old.envelopeDigest!==request.envelopeDigest)throw new ProjectError('idempotency_conflict','verification key already used');return canonicalJson(prior);}
       const used=s.proposals.filter(q=>q.envelope.mandateId===mandate.id).reduce((count,q)=>count+tx.nativeJobCount(projectId,q.digest),0);
       if(used>=mandate.maxJobs)throw new ProjectError('mandate_scope_denied','verification job budget exhausted');
+      }
       tx.putNativeJob(projectId,key,canonicalJson(request),null);return canonicalJson({request:canonicalJson(request),result:null});
     }));
   }

@@ -23,6 +23,10 @@ export async function enableNativeProject(org: string, pid: string): Promise<voi
   await request(org, pid, '/enable', { idempotencyKey: crypto.randomUUID() });
 }
 export async function nativeCommand(org: string, pid: string, generation: number, body: Record<string, unknown>): Promise<void> {
+  if(body.type==='prepareRecovery'){
+    await request(org,pid,'/recoveries',{manifestHash:body.manifestHash,expectedGeneration:generation,idempotencyKey:crypto.randomUUID()});
+    return;
+  }
   if (body.type === 'requestVerification') {
     await request(org, pid, `/proposals/${encodeURIComponent(String(body.proposalId))}/verify`, { idempotencyKey: crypto.randomUUID() });
     return;

@@ -19,7 +19,8 @@ Release health observes the actual deployed release's existing configured identi
 records an observation against its manifest and output digest, and expires after five minutes.
 Expired or missing observations return `unknown`. A healthy release identity check does not prove
 business scenario correctness. Acceptance, publishing, deployment and health remain separate states.
-Native failures require explicit recovery under current project requirements; automatic rollback
+Native failures require explicit recovery under current project requirements; the owner history
+recovery UI/API now prepares and verifies exact old source as a newly accepted local manifest; automatic rollback
 of earlier artifacts is disabled for enabled projects. External effects and database migrations
 are never represented as automatically reverted.
 
@@ -96,3 +97,11 @@ registration test uses a transport double; real remote Artifacts access remains 
 Scenario evidence still binds source+recipe, not a guarantee that a later production rebuild has
 identical bytes. Publish approval separately binds that release's outputDigest. Retain external CI/Git
 as the recovery bridge and complete AN-21 before describing G1 as achieved.
+
+
+Local recovery is now exercised end-to-end by `pnpm test:g1:local`: human-role browser preparation,
+fresh signed current scenarios, exact decision, atomic restore, actual canonical Git reconciliation
+and repeated isolated behavior. This is a local provider recovery proof, not a cloud deployment.
+Recovery refuses declared/intervening external effects, configured/recorded data migrations and
+unsupported current mandatory legacy artifact checks/contracts. The corresponding live sequence
+still needs the isolated target and must obtain separate release/publish authorization.

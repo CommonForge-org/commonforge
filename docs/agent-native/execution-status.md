@@ -4,8 +4,8 @@ Updated: 2026-10-17. Goal: durable project understanding across agent handoffs (
 
 **Current result:** the real-local implementation and actual fresh-agent continuity are validated.
 Full G1 is **not achieved**: a bounded matching Cloudflare/workerd verifier now passes local execution,
-but authorized isolated live release/observation/recovery and the remaining workflow gaps below
-remain outstanding. No production change,
+but authorized isolated live release/observation/recovery remains unperformed. Concrete local
+source recovery now passes actual Git/runner/browser checks; see the final continuation record. No production change,
 private repository access, visibility/license change, package publication or infrastructure purchase
 was performed. See the final gate record below; earlier entries are chronological checkpoints.
 
@@ -30,7 +30,7 @@ was performed. See the final gate record below; earlier entries are chronologica
 | W05 trusted scenario evidence | locally verified | fixed synthetic verifier, signed complete set, retry history |
 | W06 real local workflow | locally verified | actual Git smart HTTP, Worker, runner, R2 and static/API previews |
 | W07 reference UI | locally verified | default native onboarding, fresh folder genesis, real owner correction/preview/review/acceptance |
-| W08 release / recovery | partial | bounded workerd adapter and signed exact-Git bridge verified locally; live gate and concrete recovery workflow audit outstanding |
+| W08 release / recovery | partial | bounded workerd adapter, exact historical source recovery and signed Git bridge verified locally; authorized cloud gate outstanding |
 | W09 portability / agency contract | locally verified, bounded | history/evidence payloads without trust; Git restoration not implemented |
 | W10 integrated review / rehearsal | local gates verified | actual fresh-agent/self-development evidence; full release gate not achieved |
 
@@ -135,7 +135,7 @@ release invariant is distinct from a successful live release (AN-21).
 | AN-13 | pass | exact envelope resulting-head checks and preview source-map regression; changed integration output cannot reuse the prior subject |
 | AN-14 | pass | packaged real-local Playwright owner correction + exact-source preview + nine results + approve/accept; no JSON/Git entered in owner UI; synthetic automated owner, not user validation |
 | AN-15 | pass | release/core tests distinguish accepted/deployed/healthy/unhealthy/expired-unknown; no live G1 deployment claimed |
-| AN-16 | pass (local invariants) | recovery binds historical complete source heads under current knowledge; declared external effects refused; native automatic legacy rollback disabled; successful cloud recovery remains AN-21 |
+| AN-16 | pass (real local workflow) | browser prepares historical source under current knowledge, fresh signed9 passes, atomic restore+manifest, actual canonical Git ref synced and repeated isolated9; declared/data effects and unsupported artifact checks refused; successful cloud recovery remains AN-21 |
 | AN-17 | pass | bundle conformance + actual API history round-trip, real R2 payload export; imports create local drafts/authority and retain untrusted exact archive; Git is not automatically restored |
 | AN-18 | pass | legacy core vectors, ledger/Worker migration and full existing suites; shipped SQLite migrations 1–3 unchanged, native migration 4 appended; D1 0019 appended |
 | AN-19 | pass | actual credentialed smart HTTP clone/push/revoke, Node runner, R2, static and isolated API preview; `test:g1:local` and retained real reports |
@@ -262,3 +262,74 @@ The isolated target must not be the running control instance. See updated
 **Next action:** complete the concrete native recovery audit/workflow; finish any independent local
 G1 requirements. Run AN-21 only after an authorized isolated target/runner is available. The G1 goal
 remains active, with no work beyond M5. This continuation does not mark G1 complete.
+
+
+## Final continuation result: local recovery and verification
+
+Additional independent implementation/review closed the concrete recovery gap. The new
+`POST …/native/recoveries {manifestHash,expectedGeneration,idempotencyKey}` prepares an exact complete
+historical source set under current knowledge/policy. The owner UI exposes **Review recovery to
+project version …** in accepted history, then uses the existing fresh scenario, explanation,
+approval and separate acceptance controls. No raw JSON or Git is needed for that owner journey.
+Recovery never restores knowledge or silently deploys. The same SQLite transaction writes the
+artifact restore version, heads, ref-reconciliation outbox, project manifest and idempotency.
+
+Acceptance rechecks full current write access, current allowed approval role, immutable authority
+revision, exact parent/policy, complete fresh evidence, and accepted historical source membership.
+Generic recovery-preparation bypasses are refused. Imported archives cannot become local targets.
+Declared/intervening effects, configured/recorded data migrations and unsupported current mandatory
+artifact checks/contracts refuse recovery rather than treating them as reverted or verified. These
+are bounded code-only recovery semantics; arbitrary persistence/framework recovery is not claimed.
+Native release binding permits a separately verified accepted recovery, while metadata-only state
+still cannot release source. Policy changes after preparation are covered by independent regressions.
+
+Actual final packaged command `PORT=8939 PREVIEW_PORT=8940 pnpm test:g1:local` passed **all four** real
+browser journeys (22.8s). The recovery ran nine fresh signed scenarios, accepted historical manifest
+`f097186b97138563df60848459ab26b99b6a636d0c58199c413ca59c7e44d43c` as new manifest
+`b86361f7d661472db86ce7495c4611a058b0c26cd4846c81f5cc1b451185ad99`, and retained current knowledge
+`6e0306a76a72b1fe60ee6a2c54d409c2a6a43ec6ac7fd1b52cc55932d449be88`.
+The wrapper now waits for exact restored heads to become `synced`, then performs an actual smart-HTTP
+Git read verifying SHA `547a4e7a795521d93cc06c3f7b61c63e37fe2142`. It independently executes all nine
+scenarios again against that exact canonical module in namespaces, confirming ruleVersion2 and
+removal of the later source-only reviewReady field. The accepted artifact is `av-000000000005`.
+
+The first recovery browser run accepted correctly but stopped the local stack before ref delivery;
+the follow-up read caught pending reconciliation. That run is not counted as a complete provider
+recovery gate. Local emulator queue delivery is process-local; ledger records are durable. The test
+and wrapper now keep the stack alive through actual reconciliation and the independent canonical
+source check. No source ref was manually forced to create a passing result.
+
+Public evidence: [recovery report](evidence/recovery-report.json),
+[browser acceptance](evidence/recovery-acceptance.json), and [review screenshot](images/recovery-accepted.png).
+The screenshot was inspected. CI uploads only bounded sanitized reports/acceptance/PNGs, never operator
+files, raw logs or session data. The final task-owned stack was stopped gracefully; retained state is
+`/tmp/commonforge-g1-real-worker-uYQgeq`. No unrelated process or data was touched.
+
+Final verification after recovery integration:
+
+| Command | Result |
+|---|---|
+| `pnpm typecheck` | pass, 21 tasks; `.g1-artifacts/recovery-final-typecheck.log` |
+| `pnpm build` | pass, 13 tasks; `.g1-artifacts/recovery-final-build.log` |
+| `pnpm exec turbo run test --concurrency=1` | pass, 21 tasks, **3,013 passed /5 existing skips**; Worker965, ledger204, web661, runner171; `.g1-artifacts/recovery-final-all-test.log` |
+| `pnpm test:security` | pass, **387 passed /1 existing skip**; `.g1-artifacts/recovery-final-security.log` |
+| `pnpm test:fault` | pass, **20 tests**, including actual acceptance/genesis/recovery SQLite faults; `.g1-artifacts/recovery-final-fault.log` |
+| Packaged real-local | pass, actual API/Git/runner/R2/preview, four browser journeys and exact canonical recovery/namespace check; `.g1-artifacts/native-recovery-real-local-final.log` |
+
+Continuation implementation before recovery was committed as `98c4f57`. Recovery code and its
+updated evidence are recorded by the next local implementation commit. Full G1 remains **not achieved**:
+AN-21 requires authorized isolated remote Cloudflare release, observation, freshness expiry and recovery.
+The HTTPS/workerd supervisor is locally executable and verified for its bounded shape; deployment
+infrastructure/credentials/target authorization remain unspecified. The user clarification is pending.
+No cloud operation, private repository access, purchase, push or publication occurred.
+
+Remaining bounded limitations are documented in local-workflow.md and release-rehearsal.md: existing
+source attach/detach/import and shared staging unsupported; source/knowledge acceptance two-step;
+mandate renewal via replacement handoff/context, not transparent token extension; failed directory
+barriers require quiescent operator repair; Git bundle materialization absent; conservative payload
+and mount-reservation retention; one bundled vars-only workerd target. These must remain visible.
+
+**Next action:** obtain the existing isolated test target/configuration and allowed scope, then run
+remote supervisor/provider integration and AN-21's release/observe/expire/recover sequence. Reassess
+any unfulfilled local contract before claiming G1 complete. Do not proceed to M6–M8. The goal remains
+active; all work in this continuation stayed within G1.

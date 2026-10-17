@@ -37,6 +37,7 @@ import { lfsRoutes } from "./routes/lfs.js";
 import { fileChangeRoutes } from "./routes/file-changes.js";
 import { stagingRoutes } from "./routes/staging.js";
 import { promotionRoutes } from "./routes/promotions.js";
+import { nativeRecoveryRoutes } from "./routes/native-recovery.js";
 import { nativeProjectRoutes } from "./routes/native-projects.js";
 import { nativeSubmitRoutes } from "./routes/native-submit.js";
 import { nativePayloadRoutes } from "./routes/native-payloads.js";
@@ -93,6 +94,7 @@ export function createApp(deps: Deps = defaultDeps) {
 
   app.route("/api", authRoutes);
   app.route("/api", nativeProjectRoutes);
+  app.route("/api", nativeRecoveryRoutes);
   app.route("/api", nativeSubmitRoutes);
   app.route("/api", nativePayloadRoutes);
   app.route("/api", orgRoutes);

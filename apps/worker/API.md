@@ -1933,3 +1933,12 @@ sharing against native ownership; failed/former attachments can conservatively p
 owner enroll/restore a current owner/developer with complete source access, using CAS/idempotency.
 Authority revision advances; prior decisions/mandates stay invalid. Pending directory changes block
 reconciliation; interrupted barriers require quiescent operator recovery (see local-workflow.md).
+
+
+`POST …/native/recoveries {manifestHash,expectedGeneration,idempotencyKey}` prepares exact historical
+source under current requirements with no fabricated task/inner proposal. Current complete write
+access is required. Run fresh scenarios with the existing verification endpoint, record an exact
+allowed-role decision, and accept via native commands. Artifact restore and manifest commit atomically;
+current knowledge stays unchanged, canonical Git ref reconciliation is queued. Preparation/acceptance
+refuse declared/data effects and current mandatory legacy checks/contracts the recovery adapter cannot
+execute. Recovery is separate from deployment, and imported archives cannot authorize local recovery.

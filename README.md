@@ -21,7 +21,8 @@ agency workflow remains available while a separate private agency consumer is de
 
 The **G1 implementation is under validation**. Run `pnpm dev:real-local` for the real Git/Worker/Node
 stack, or `pnpm test:g1:local` for its bounded API and browser rehearsal. Knowledge, Outcomes and
-Review are available to owners/developers; enabling project understanding is currently explicit.
+Review are available to owners/developers. New web projects default to this workflow; existing
+legacy projects retain explicit enablement.
 See [execution status](docs/agent-native/execution-status.md) for measured gates and
 [the local workflow](docs/agent-native/local-workflow.md) for setup and limits. Production native
 release and complete Git bundle restoration have additional requirements; existing agency

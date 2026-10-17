@@ -24,6 +24,14 @@ describe('native release identity and observation',()=>{
  for(const behavior of ['outstanding','historical-unverified'] as const){const s=fixture();s.manifests[0]!.behavior=behavior;expect(()=>nativeReleaseSubject(s,{source:source.revisionId},recipe,environment)).toThrow(/verified accepted/);}
  const stale=fixture();stale.knowledgeHead='e'.repeat(64);expect(()=>nativeReleaseSubject(stale,{source:source.revisionId},recipe,environment)).toThrow(/current knowledge/);const changed=fixture();changed.policyRevision++;expect(()=>nativeReleaseSubject(changed,{source:source.revisionId},recipe,environment)).toThrow(/policy/);
  });
+ it('allows separately verified accepted recovery, while no-inner metadata cannot release source',()=>{
+ const s=fixture(),p=s.proposals[0]!,m=s.manifests[0]!;
+ p.envelope={...p.envelope,innerProposalId:null,innerProposalHash:null,attemptId:null,mandateId:null,mandateRevision:null,contextDigest:null,recovery:{manifestHash:'c'.repeat(64),planDigest:'d'.repeat(64)}};
+ p.digest=computeProjectProposalHash(p.envelope);m.envelopeDigest=p.digest;const {hash,...content}=m;m.hash=computeProjectManifestHash(content);
+ expect(nativeReleaseSubject(s,{source:source.revisionId},recipe,environment).manifestHash).toBe(m.hash);
+ p.envelope.recovery=null;p.digest=computeProjectProposalHash(p.envelope);m.envelopeDigest=p.digest;
+ expect(()=>nativeReleaseSubject(s,{source:source.revisionId},recipe,environment)).toThrow(/accepted source proposal/);
+ });
  it('records actual deployment output identity and expires health after five minutes',async()=>{
  const h=harness();let clock=new Date(now);h.deps.now=()=>clock;const s=fixture();const b=nativeReleaseSubject(s,{source:source.revisionId},recipe,environment);
  const rel={release_id:'release',org_id:'org',project_id:'project',sources_json:JSON.stringify({source:source.revisionId}),recipe_json:JSON.stringify(recipe),environment_json:JSON.stringify(environment),output_digest:'f'.repeat(64),deploy_attempts:1,health_json:JSON.stringify({ok:true,checkedAt:now,targets:[{targetId:'api',ok:true}]})} as ReleaseRow;

@@ -541,7 +541,7 @@
   },
   "continuation": {
     "recordedAt": "2026-10-17",
-    "implementationRevision": "continuation worktree; revision in execution-status.md",
+    "implementationRevision": "98c4f57 plus recovery implementation revision recorded in execution-status.md",
     "realNativeOnboarding": {
       "command": "PORT=8939 PREVIEW_PORT=8940 pnpm test:g1:local",
       "browserTestsPassed": 3,
@@ -557,6 +557,17 @@
     },
     "authorityAndGenesis": "actual SQLite race and fault regressions passed",
     "liveGate": "pending authorized isolated target",
-    "fullG1": "not_achieved"
+    "fullG1": "not_achieved",
+    "historicalRecovery": {
+      "command": "PORT=8939 PREVIEW_PORT=8940 pnpm test:g1:local",
+      "browserTestsPassed": 4,
+      "realGitReconciliation": "pass",
+      "freshSignedScenarios": 9,
+      "repeatedCanonicalNamespaceScenarios": 9,
+      "knowledgePreserved": true,
+      "report": "recovery-report.json",
+      "cloudDeployment": "not_run",
+      "externalEffectsReversed": false
+    }
   }
 }

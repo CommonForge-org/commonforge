@@ -439,6 +439,9 @@ Current native limitations:
   external bindings/migrations/assets. Remote infrastructure integration and a real authorized isolated
   Cloudflare release/recovery rehearsal remain outstanding; production rebuild bytes are separately approved. No native
   production deployment or continuous monitoring is claimed.
+- Local historical source recovery is implemented and exercised through real browser/Git/runner
+  execution. It refuses declared/data effects and unsupported current mandatory artifact checks/contracts;
+  no database/external reversal is claimed. Cloud recovery still requires the isolated live gate.
 - Bundles preserve historical metadata and available evidence bytes without importing trust. They
   explicitly report missing Git content, are not complete backups, and do not restore Git repositories.
   Evidence bytes are conservatively retained across all history. Only unreferenced bytes can be deleted;

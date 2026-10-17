@@ -12,6 +12,7 @@ import {
   type ProjectManifest, type ProjectProposal, type ProjectState, type ScenarioRevision,
 } from '@commonforge-org/core';
 import { planCommit } from './plan-commit.js';
+import { planProjectRecovery, validateProjectRecovery } from './project-recovery.js';
 import type { LedgerTx, LedgerWrite } from './store.js';
 
 const Id = z.string().min(1).max(256);
@@ -76,11 +77,7 @@ function checkProposal(s: ProjectState, p: ProjectProposal, now: string) {
   if (e.expectedKnowledgeHead !== s.knowledgeHead) fail('knowledge_stale', 'project requirements changed; prepare and verify again');
   if (e.expectedParent !== (last(s.manifests)?.hash ?? null) || e.policyRevision !== s.policyRevision) fail('review_subject_changed', 'parent or policy changed');
   if (e.outcome && !s.outcomes.some(o => o.id === e.outcome!.id && o.revision === e.outcome!.revision)) fail('review_subject_changed', 'outcome revision is unavailable');
-  if (e.recovery) {
-    if(e.effects.length)fail('recovery_unsupported','automatic recovery cannot undo declared external effects');
-    const target=s.manifests.find(m => m.hash === e.recovery!.manifestHash);
-    if (!target || !same(heads(target.sourceHeads),heads(e.sourceHeads))) fail('recovery_unsupported', 'recovery must bind the historical complete source heads under current requirements');
-  }
+  if (e.recovery) { validateProjectRecovery(s,e); authority(s,p.author,true); }
   for (const [refs, records] of [[e.proposedKnowledge,s.knowledge],[e.proposedScenarios,s.scenarios]] as const) {
     for (const ref of refs) if (!records.some(r => r.id === ref.id && r.revision === ref.revision && !r.archived && r.confirmation === null)) fail('revision_conflict', 'proposed draft revision is unavailable');
   }
@@ -116,7 +113,7 @@ function confirm<T extends KnowledgeRevision | ScenarioRevision>(s:ProjectState,
 export function applyProjectCommand(input:ProjectState,raw:unknown,actor:ProjectActor):ProjectTransition {
   return transition(input,raw,actor);
 }
-function transition(input:ProjectState,raw:unknown,actor:ProjectActor,artifact?:{tx:LedgerTx;input:AcceptInput}):ProjectTransition {
+function transition(input:ProjectState,raw:unknown,actor:ProjectActor,artifact?:{tx:LedgerTx;input?:AcceptInput}):ProjectTransition {
   const parsed=ProjectCommandSchema.safeParse(raw);
   if(!parsed.success) return fail('invalid_project_record',parsed.error.message);
   const c=parsed.data;
@@ -127,7 +124,9 @@ function transition(input:ProjectState,raw:unknown,actor:ProjectActor,artifact?:
   const replay=s.idempotency.find(i=>i.key===c.idempotencyKey);
   if(replay) {
     if(replay.requestDigest!==digest) fail('idempotency_conflict','key was used for another command');
-    const acceptedVersionId=artifact?.tx.getIdempotency(s.organizationId,artifact.input.idempotencyKey)?.acceptedVersionId;
+    const proposal=c.type==='accept'?s.proposals.find(p=>p.id===c.proposalId):undefined;
+    const artifactKey=artifact?.input?.idempotencyKey ?? (proposal?.envelope.recovery ? `native-recovery:${proposal.digest}` : undefined);
+    const acceptedVersionId=artifactKey?artifact?.tx.getIdempotency(s.organizationId,artifactKey)?.acceptedVersionId:undefined;
     return {state:s,replayed:true,resultId:replay.resultId,artifactWrites:[],...(acceptedVersionId?{acceptedVersionId}:{})};
   }
   if(c.expectedGeneration!==s.generation) fail('revision_conflict','project generation changed');
@@ -199,23 +198,27 @@ function transition(input:ProjectState,raw:unknown,actor:ProjectActor,artifact?:
       if(!d || d.action!=='approve' || d.envelopeDigest!==p!.digest || d.innerProposalHash!==p!.envelope.innerProposalHash || d.createdAt>actor.now) fail('review_subject_changed','exact approval required');
       const reviewer=authority(s,d!.author,true); if(reviewer.revision!==d!.authorityRevision) fail('authority_denied','approval authority changed');
       const e=p!.envelope; const evidenceIds:string[]=[];
-      for(const q of e.innerProposalId===null ? [] : e.requiredScenarios) {
+      for(const q of e.innerProposalId===null && !e.recovery ? [] : e.requiredScenarios) {
         const pool=s.evidence.filter(r=>r.envelopeDigest===p!.digest && r.scenarioId===q.id && r.scenarioRevision===q.revision && r.verifierDigest===q.verifierDigest && r.method===q.method && r.buildDigest===e.buildDigest && r.runtimeRecipeDigest===e.runtimeRecipeDigest);
         const active=pool.filter(r=>!pool.some(n=>n.supersedes===r.id));
         if(!active.length || active.some(r=>r.result!=='pass' || r.provenance===(q.method==='automated'?'human-attested':'runner-verified') || r.provenance==='imported-untrusted')) fail('scenario_evidence_missing','every required scenario needs current passing evidence');
         evidenceIds.push(...active.map(r=>r.id));
       }
       if(e.innerProposalId!==null) {
-        if(!artifact) fail('project_mode_unsupported','source acceptance requires atomic artifact transaction');
-        const inner=artifact!.tx.getProposal(artifact!.input.proposalId);
-        if(!inner || inner.organizationId!==s.organizationId || inner.projectId!==s.projectId || inner.proposalHash!==e.innerProposalHash || artifact!.input.proposalId!==e.innerProposalId || artifact!.input.proposalHash!==e.innerProposalHash || artifact!.input.policyRevision!==e.policyRevision || artifact!.input.actor.id!==actor.actorId) fail('review_subject_changed','inner proposal identity does not match envelope');
+        if(!artifact?.input) fail('project_mode_unsupported','source acceptance requires atomic artifact transaction');
+        const inner=artifact!.tx.getProposal(artifact!.input!.proposalId);
+        if(!inner || inner.organizationId!==s.organizationId || inner.projectId!==s.projectId || inner.proposalHash!==e.innerProposalHash || artifact!.input!.proposalId!==e.innerProposalId || artifact!.input!.proposalHash!==e.innerProposalHash || artifact!.input!.policyRevision!==e.policyRevision || artifact!.input!.actor.id!==actor.actorId) fail('review_subject_changed','inner proposal identity does not match envelope');
         const expected=new Map(s.sourceHeads.map(h=>[h.resourceId,h.revisionId]));
-        for(const h of artifact!.input.newHeads) {if(!expected.has(h.resourceId)) fail('review_subject_changed','source change is outside project');expected.set(h.resourceId,h.revisionId);}
+        for(const h of artifact!.input!.newHeads) {if(!expected.has(h.resourceId)) fail('review_subject_changed','source change is outside project');expected.set(h.resourceId,h.revisionId);}
         if(!same(heads(e.sourceHeads),heads([...expected].map(([resourceId,revisionId])=>({resourceId,revisionId}))))) fail('review_subject_changed','envelope must bind complete resulting source heads');
-        const decision=planCommit(artifact!.tx,artifact!.input,actor.now);
+        const decision=planCommit(artifact!.tx,artifact!.input!,actor.now);
         if(!decision.ok) fail(decision.code==='dependency_stale'?'knowledge_stale':'review_subject_changed',decision.detail??decision.code);
         if(decision.ok) {artifactWrites=decision.replayed?[]:decision.writes;acceptedVersionId=decision.acceptedVersionId;}
         s.sourceHeads=e.sourceHeads;
+      } else if(e.recovery) {
+        if(!artifact) fail('project_mode_unsupported','recovery requires atomic artifact transaction');
+        const recovered=planProjectRecovery(artifact!.tx,s,e,actor.actorId,actor.now);
+        artifactWrites=recovered.artifactWrites;acceptedVersionId=recovered.acceptedVersionId;s.sourceHeads=e.sourceHeads;
       } else if(!same(heads(e.sourceHeads),heads(s.sourceHeads))) fail('review_subject_changed','knowledge-only acceptance cannot move source');
       if(e.proposedKnowledge.length || e.proposedScenarios.length) {
         for(const r of e.proposedKnowledge) confirm(s,s.knowledge,r.id,r.revision,c.decisionId,actor);
@@ -223,7 +226,7 @@ function transition(input:ProjectState,raw:unknown,actor:ProjectActor,artifact?:
         refreshKnowledge(s);
       }
       if(e.attemptId){const attempt=s.attempts.find(a=>a.id===e.attemptId)!;attempt.status='completed';attempt.endedAt=actor.now;}
-      addManifest(s,actor,p!.id+':manifest',e.innerProposalId!==null && !e.proposedKnowledge.length && !e.proposedScenarios.length?'verified':'outstanding',p!,c.decisionId,evidenceIds); resultId=last(s.manifests)!.hash; break;
+      addManifest(s,actor,p!.id+':manifest',(e.innerProposalId!==null || e.recovery!==null) && !e.proposedKnowledge.length && !e.proposedScenarios.length?'verified':'outstanding',p!,c.decisionId,evidenceIds); resultId=last(s.manifests)!.hash; break;
     }
   }
   s.generation++;
@@ -234,7 +237,7 @@ function transition(input:ProjectState,raw:unknown,actor:ProjectActor,artifact?:
 export function planProjectAccept(tx:LedgerTx,state:ProjectState,command:unknown,actor:ProjectActor,artifactInput?:AcceptInput):ProjectTransition {
   const parsed=ProjectCommandSchema.safeParse(command);
   if(!parsed.success || parsed.data.type!=='accept') fail('invalid_project_record','accept command required');
-  return transition(state,command,actor,artifactInput?{tx,input:artifactInput}:undefined);
+  return transition(state,command,actor,{tx,...(artifactInput?{input:artifactInput}:{})});
 }
 
 /** Trusted migration/bootstrap only: call after authoritative no-in-flight and ownership checks. */

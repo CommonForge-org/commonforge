@@ -87,8 +87,11 @@ monitoring. Native release requires an exact compatible deployment runtime verif
 Node fixture verifier does not establish Cloudflare deployment behavior. A separate bounded real
 workerd adapter now builds and verifies the exact registered source under the release-compatible
 recipe/environment digest; its tests do not establish a successful live Cloudflare deployment. See
-[release prerequisites and limits](release-rehearsal.md). Recovery of source is a newly reviewed
-proposal under current knowledge; automatic legacy rollback and unmodeled external-effect recovery
+[release prerequisites and limits](release-rehearsal.md). Use Behavior review → Accepted project history → **Review recovery to project version …** to
+prepare exact historical source under current knowledge. Run fresh required scenarios, review and
+approve, then accept separately. The packaged real-local command additionally waits for real Git ref
+reconciliation and checks restored behavior against the canonical module. Configured/recorded data
+effects and current mandatory artifact checks/contracts the adapter cannot execute refuse recovery; automatic legacy rollback and unmodeled external-effect recovery
 are refused. There is no database/external-side-effect reversal automation.
 
 Project bundle export reports missing source content and is not labeled a complete backup. Import

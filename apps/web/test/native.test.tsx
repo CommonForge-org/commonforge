@@ -1,12 +1,12 @@
 import { renderToString } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { createProjectState, type KnowledgeRevision, type ProjectProposal } from '@commonforge-org/core';
+import { createProjectState, type ProjectManifest, type KnowledgeRevision, type ProjectProposal } from '@commonforge-org/core';
 import { FakeApi } from '../src/api/fake.js';
 import { AppContext } from '../src/lib/hooks.js';
 import { parseRoute } from '../src/lib/router.js';
 import { KnowledgeEditor } from '../src/screens/ProjectKnowledge.js';
 import { AgentHandoff } from '../src/screens/AgentHandoff.js';
-import { previewMatchesProjectSource, Review } from '../src/screens/NativeReview.js';
+import { canPrepareRecovery, previewMatchesProjectSource, Review } from '../src/screens/NativeReview.js';
 
 const T = '2026-10-17T12:00:00Z';
 const D = 'a'.repeat(64);
@@ -51,6 +51,22 @@ describe('project understanding owner views', () => {
     expect(previewMatchesProjectSource(preview, [{ resourceId: 'source', revisionId: `art:repo:${other}` }])).toBe(false);
     const withoutSources = { ...preview, sources: undefined };
     expect(previewMatchesProjectSource(withoutSources, [{ resourceId: 'source', revisionId: `art:repo:${sha}` }])).toBe(false);
+  });
+  it('offers recovery only for a complete changed historical source set and keeps its evidence review distinct', async()=>{
+    const oldHead={resourceId:'source',revisionId:`art:repo:${'1'.repeat(40)}`};
+    const currentHead={resourceId:'source',revisionId:`art:repo:${'2'.repeat(40)}`};
+    const manifest:ProjectManifest={...meta,id:'historic',sequence:1,parent:null,hash:D,sourceHeads:[oldHead],knowledgeHead:state.knowledgeHead,knowledgeGeneration:0,envelopeDigest:null,decisionId:null,evidenceIds:[],behavior:'historical-unverified'};
+    const current={...state,sourceHeads:[currentHead],manifests:[manifest]};
+    expect(canPrepareRecovery(current,manifest)).toBe(true);
+    expect(canPrepareRecovery({...current,sourceHeads:[oldHead]},manifest)).toBe(false);
+    expect(canPrepareRecovery({...current,sourceHeads:[currentHead,{resourceId:'new-source',revisionId:currentHead.revisionId}]},manifest)).toBe(false);
+    const recovery={...proposal,envelope:{...proposal.envelope,innerProposalId:null,innerProposalHash:null,recovery:{manifestHash:D,planDigest:D},expectedKnowledgeHead:state.knowledgeHead,expectedParent:D}};
+    const html=await render(<Review state={{...current,proposals:[recovery]}} command={async()=>{}} busy={false}/>);
+    expect(html).toContain('Historical source recovery');
+    expect(html).toContain('Review recovery to project version 1');
+    expect(html).toContain('does not restore old knowledge, deploy, or reverse database or external effects');
+    expect(html).toContain('Run required automated scenarios');
+    expect(html).not.toContain('Knowledge-only proposal');
   });
   it('routes the owner views without changing legacy routes', () => {
     for (const tab of ['outcomes', 'knowledge', 'review']) expect(parseRoute(`/o/org/p/project/${tab}`, '')).toEqual({ name: 'project', org: 'org', pid: 'project', tab });

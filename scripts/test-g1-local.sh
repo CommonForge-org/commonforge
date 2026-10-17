@@ -27,11 +27,22 @@ pnpm --filter @commonforge-org/runner exec tsx src/g1-worker-rehearsal.ts "$g1_o
 g1_session=$(node --input-type=module -e 'import{readFileSync}from"node:fs";import{join}from"node:path";process.stdout.write(join(JSON.parse(readFileSync(process.argv[1],"utf8")).root,"owner-session.json"))' "$g1_artifacts/report.json")
 pnpm --filter @commonforge-org/runner exec tsx src/g1-pending-review.ts "$g1_session" "$g1_operator" >"$g1_artifacts/review-report.json"
 COMMONFORGE_NATIVE_REQUIRE_PREVIEW=1 COMMONFORGE_NATIVE_REVIEW_REPORT="$g1_artifacts/review-report.json" COMMONFORGE_NATIVE_URL="http://127.0.0.1:$PORT" COMMONFORGE_NATIVE_LOG="$g1_artifacts/worker.log" COMMONFORGE_NATIVE_SESSION_FILE="$g1_session" pnpm --filter @commonforge-org/web exec playwright test -c playwright.native.config.ts
+g1_recovery_browser=$(node --input-type=module - <<'JS'
+import {readdirSync} from 'node:fs';
+import {join} from 'node:path';
+const root='apps/web/test-results/native';
+const files=readdirSync(root,{recursive:true}).filter(path=>String(path).endsWith('/recovery-acceptance.json'));
+if(files.length!==1)throw new Error('required actual browser recovery evidence absent or ambiguous');
+process.stdout.write(join(root,String(files[0])));
+JS
+)
+pnpm --filter @commonforge-org/runner exec tsx src/g1-recovery-rehearsal.ts "$g1_session" "$g1_operator" "$repo/$g1_recovery_browser" >"$g1_artifacts/recovery-report.json"
 node --input-type=module - "$g1_artifacts/report.json" <<'JS'
 import {readFileSync,writeFileSync} from 'node:fs';
 const path=process.argv[2],report=JSON.parse(readFileSync(path,'utf8'));
 delete report.root;delete report.workerUrl;
 report.gates.browserOwnerJourney='pass';
+report.gates.historicalSourceRecovery='pass';
 writeFileSync(path,JSON.stringify(report,null,2)+'\n');
 JS
 printf 'G1 real-local API and browser checks passed. Report: .g1-artifacts/local-ci/report.json\n'
