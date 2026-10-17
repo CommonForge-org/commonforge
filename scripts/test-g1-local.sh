@@ -18,11 +18,12 @@ done
 g1_operator=$(node --input-type=module -e 'import{readFileSync}from"node:fs";const lines=readFileSync(process.argv[1],"utf8").split("\n");const s=lines.find(l=>l.startsWith("{\"mode\":\"real-local-worker\""));if(!s)process.exit(1);process.stdout.write(JSON.parse(s).operatorFile)' "$g1_artifacts/launcher.jsonl")
 g1_ready=0
 for ((g1_wait=0;g1_wait<120;g1_wait++)); do
-  if curl --fail --silent --max-time 2 "http://127.0.0.1:$PORT/health" >/dev/null 2>&1; then g1_ready=1; break; fi
+  if curl --fail --silent --max-time 2 "http://127.0.0.1:$PORT/health" >/dev/null 2>&1 &&
+     curl --fail --silent --max-time 2 "http://127.0.0.1:$PREVIEW_PORT/health" >/dev/null 2>&1; then g1_ready=1; break; fi
   if ! kill -0 "$g1_pid" 2>/dev/null; then break; fi
   sleep 1
 done
-if [ "$g1_ready" != 1 ]; then echo 'G1 real Worker did not become ready; inspect the task-private worker log' >&2; exit 1; fi
+if [ "$g1_ready" != 1 ]; then echo 'G1 API and preview Workers did not both become ready; inspect the task-private worker log' >&2; exit 1; fi
 pnpm --filter @commonforge-org/runner exec tsx src/g1-worker-rehearsal.ts "$g1_operator" "$g1_artifacts/worker.log" --preview >"$g1_artifacts/report.json"
 g1_session=$(node --input-type=module -e 'import{readFileSync}from"node:fs";import{join}from"node:path";process.stdout.write(join(JSON.parse(readFileSync(process.argv[1],"utf8")).root,"owner-session.json"))' "$g1_artifacts/report.json")
 pnpm --filter @commonforge-org/runner exec tsx src/g1-pending-review.ts "$g1_session" "$g1_operator" >"$g1_artifacts/review-report.json"

@@ -530,3 +530,8 @@ unique test counts. PR checks are the authoritative landing result for the final
 The real-local launcher also relied on `rg`, absent on one hosted runner. Its fixed-string
 readiness check now uses standard `grep`. A fresh `PORT=8959 PREVIEW_PORT=8960 pnpm test:g1:local`
 passed all five actual browser journeys and canonical recovery verification after this change.
+
+A subsequent hosted run reached API acceptance but could not connect to the separate preview
+server. Startup now waits for both API and preview health endpoints, uses separate ephemeral
+inspector ports for the two Wrangler processes, and stops the stack if either process exits.
+Runner typecheck and the full five-journey real-local/recovery command passed with these guards.

@@ -60,13 +60,19 @@ async function main() {
   await writeFile(join(root, 'operator.json'), JSON.stringify({ sidecarUrl: sidecar.url, sidecarKey: key, bridgeUrl: bridge.url, jobKey, workerUrl, namespacePrefix }), { mode: 0o600 });
   const baseArgs = ['--filter', '@commonforge-org/worker', 'exec', 'wrangler'];
   await command([...baseArgs, 'd1', 'migrations', 'apply', 'commonforge-real', '--local', '-c', configPath, '--persist-to', persist, '--env-file', join(workerDir, 'e2e/no-secrets.env')], repo);
-  const start = (path: string, listen: number) => spawn('pnpm', [...baseArgs, 'dev', '-c', path, '--persist-to', persist, '--env-file', join(workerDir, 'e2e/no-secrets.env'), '--ip', '127.0.0.1', '--port', String(listen), '--show-interactive-dev-session=false'], { cwd: repo, stdio: ['ignore', 'pipe', 'pipe'] });
+  // Both processes need their own ephemeral inspector port as well as distinct HTTP ports.
+  const start = (path: string, listen: number) => spawn('pnpm', [...baseArgs, 'dev', '-c', path, '--persist-to', persist, '--env-file', join(workerDir, 'e2e/no-secrets.env'), '--ip', '127.0.0.1', '--port', String(listen), '--inspector-port', '0', '--show-interactive-dev-session=false'], { cwd: repo, stdio: ['ignore', 'pipe', 'pipe'] });
   const child = start(configPath, port), preview = start(previewConfig, previewPort);
   for (const c of [child, preview]) { c.stdout.pipe(process.stderr); c.stderr.pipe(process.stderr); }
   let stopped = false;
   const stop = async () => { if (stopped) return; stopped = true; child.kill('SIGTERM'); preview.kill('SIGTERM'); await bridge.close(); await localPreview.close(); await sidecar.close(); };
   process.once('SIGINT', () => { void stop(); }); process.once('SIGTERM', () => { void stop(); });
-  child.once('exit', () => { void stop(); });
+  for (const [name, process] of [['API', child], ['preview', preview]] as const) {
+    process.once('exit', (code, signal) => {
+      if (!stopped) console.error(`G1 ${name} Worker exited (code=${code}, signal=${signal}); stopping the local stack`);
+      void stop();
+    });
+  }
   const headers = { authorization: `Bearer ${runnerBearer}` }, client = createWorkerClient({ workerUrl, headers, attempts: 2 });
   const runner = createRunner({ workDir: join(root, 'runner'), journalDir: join(root, 'journal'), trustedWorkerOrigin: workerUrl,
     credentials: brokerCredentials({ headers }), jobKeyring: [jobKey], git: { allowHttp: true },
