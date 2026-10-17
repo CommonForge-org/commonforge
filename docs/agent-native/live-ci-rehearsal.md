@@ -81,6 +81,9 @@ contains task leases, workspace coordinates and completed operation state. It mu
 committed or uploaded as public evidence. Checkpoints retain exact run/runtime scope and permit
 continuation after completed steps; a failed external operation still requires inspection.
 Do not change a recipe, account, target or run identity to make an existing checkpoint pass.
+Setup refuses name-only adoption of an existing project without this run’s recorded identifier.
+Source commits persist their intended SHA and exact base before pushing; retries verify the actual
+remote ref, accept an already-landed intended commit and refuse concurrent foreign movement.
 
 There is no automatic infrastructure deletion, production rollback, source deletion, or cleanup
 of another project. Retain accepted manifests and evidence. Use the existing CI cleanup tooling

@@ -38,9 +38,9 @@ carry ancestry separately from the portable bundle. `includePayloads=1` adds ava
 payloads; already retained historical payloads stay inside their exact ancestor archive.
 
 Both versions retain exact historical state, manifest/knowledge/proposal integrity checks, optional
-content-addressed payloads, and a digest. Across the entire portable bundle, limits are 16 MiB of
-canonical JSON, 8 MiB of decoded payloads, 1,000 payload entries, 32 ancestor archives, and eight
-lineage levels. Oversized exports/imports refuse explicitly; history is never silently truncated.
+content-addressed payloads, and a digest. Both versions retain the original 16 MiB canonical JSON and per-payload 8 MiB limits.
+Version 2 additionally bounds the whole lineage to 8 MiB of decoded payloads, 1,000 payload
+entries, 32 ancestor archives, and eight lineage levels. Oversized exports/imports refuse explicitly; history is never silently truncated.
 The iterative lineage depth/count guard runs before recursive schema parsing or canonicalization. `validateProjectBundle` checks version, sizes, digests, scope, paths, duplicate
 identities, manifest chains and completeness claims before storage writes. Payloads use canonical
 base64, SHA-256 and the sole allowed path `payloads/<digest>`; the helper extracts no archive.

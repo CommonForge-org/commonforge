@@ -426,3 +426,17 @@ Private operator state/logs live under ignored .g1-artifacts/live-* (must not pu
 Independent review found and is tightening name-only project adoption and interrupted-push
 resumption in the rehearsal; product/release target checks and credential/report filtering passed
 review. Actual source/release/expiry/recovery gate still pending; do not count this setup as AN-21.
+
+### First actual isolated cloud release verified
+
+CI source cycle accepted manifest `05fc083c29ea5caef2d11abe94fce97467e878336653ae33ee400465e1838df3`
+with nine signed checks of exact registered Artifacts source. Actual release
+`rel-e4618516f2fa987ff64714cf` built output
+`27940a79f4355cacbe140cb96aa5d1180fc84103e16a911d83337004c156ee45`, was separately
+publish-approved and deployed. Actual HTTPS `/version` matched, all nine deployed behavioral
+scenarios passed and a healthy release observation was persisted with exact manifest/output binding.
+Its real freshness deadline is `2026-10-17T22:08:08.138Z`. An early expiry read honestly returned
+not_run with that deadline. No clock override. AN-21 remains partial until expiry and recovery.
+Rehearsal interruption/name-adoption safeguards committed as `ddc72d1`; seven actual local
+Git/workerd tests plus runner build/typecheck passed. Signed source verification and actual
+Cloudflare output remain separately identified, not inferred byte equivalence.

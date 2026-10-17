@@ -41,6 +41,37 @@ The session is stored with mode 0600 in your config directory (`~/.config/common
 Linux, `~/Library/Application Support/commonforge` on macOS, `%APPDATA%\commonforge` on
 Windows; override with `CFORGE_CONFIG_DIR`).
 
+## Project understanding handoff
+
+For native projects, use the owner-issued task code instead of a broad user login:
+
+```sh
+cforge handoff --code '<one-use code>' --api-url https://forge.example.com
+cforge checkout <taskId> ./work
+cforge context <taskId>
+# Edit and commit inside ./work, then:
+cforge submit --workspace ./work
+cforge propose <taskId>
+cforge results <taskId>
+```
+
+Checkout carries protected `.commonforge/context.json` and `.md` with the exact rules, scenarios,
+mandate and context digest. Submit refuses stale context. Propose may report pending integration;
+repeat once the actual runner finishes. Results distinguish current applicable evidence from
+superseded runs and failures; unavailable execution is not a successful behavioral check.
+
+When an owner authorizes renewal, exchange the replacement into a new empty checkout:
+
+```sh
+cforge renew --code '<replacement code>' --out ./work-renewed
+```
+
+Renewal revokes prior task authority and pins new context. Preserve the old workspace as history;
+it is not silently rewritten. See [renewal](../../docs/agent-native/renewal.md) and
+[the reference workflow](../../docs/agent-native/local-workflow.md) for scope and limits.
+These tools also have structured MCP equivalents. Task authority cannot confirm rules, approve,
+accept, deploy, or access another task.
+
 ## Find a task
 
 ```sh

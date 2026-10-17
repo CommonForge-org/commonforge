@@ -49,6 +49,10 @@ Node runner / preview / namespace rehearsal and reports its own narrower gates.
 6. A correction creates a new confirmed revision and a manifest with verification outstanding.
    Old evidence remains inspectable and cannot authorize source acceptance under the new head.
    Request a fresh handoff/context and reverify. Replacement handoffs revoke prior task mandates.
+7. Revise an outcome’s description, criteria or status from Outcomes; its recorded revision history
+   survives reload. Archive obsolete scenarios from Knowledge; archival preserves history and
+   makes the current verification requirements explicit. Behavior review retains failed, unavailable
+   and superseded runs separately from current applicable evidence.
 
 The real API rehearsal is `apps/runner/src/g1-worker-rehearsal.ts`; the launcher supplies its private
 operator file and Worker log. It creates disposable synthetic projects and produces machine-readable
@@ -72,7 +76,8 @@ quiescing directory mutations, completing/verifying the D1 and lease changes, in
 transition token, then invoking trusted `finishNativeAuthorityRevocation`. No public barrier-clear API
 is exposed. Attachment reservations are conservative and permanent: prior/failed attachment may
 require a fresh resource/project before native enablement. Transparent renewal of an existing pinned attempt is not
-implemented; obtain a replacement handoff and checkout. A provider token already issued has at most
+implemented. Explicit **Renew agent handoff** and `cforge renew --code … --out <new-empty-workspace>`
+issue a fresh attempt/context, revoke old authority and create a separate checkout; see [renewal](renewal.md). A provider token already issued has at most
 its bounded remaining lifetime; final acceptance still checks authoritative mandate revocation.
 
 The synthetic fixture has an explicit UTC clock and travel state, the exact 24-hour boundary,
