@@ -53,11 +53,12 @@ describe('G1 project portability and consumer boundary',()=>{
  const ancestor=b.lineage[0]!;ancestor.payloads.push(payload('handoff token '+token,'log','raw-agent-token'));b.lineage[0]=rehash(ancestor);
  expect(()=>validateProjectBundle(rehash(b))).toThrow(/credential-like/);
  });
+ // Exercise the real multi-megabyte boundary, allowing for hashing/serialization on CI hosts.
  it('keeps v1 aggregate payload compatibility while v2 uses its explicit cumulative limit',()=>{
  const logs=[payload('x'.repeat(4_200_000),'log','old-v1-a'),payload('y'.repeat(4_200_000),'log','old-v1-b')];
  const old=exportProjectBundle(fixture(),logs,[],1);expect(old.schemaVersion).toBe(1);expect(validateProjectBundle(JSON.parse(JSON.stringify(old))).digest).toBe(old.digest);
  expect(()=>exportProjectBundle(fixture(),logs,[],2)).toThrow(/total payload limit/);
- });
+ },30_000);
  it('preserves two generations of exact inert archives and retained payloads',()=>{
  const a=exportProjectBundle(fixture(),[payload('synthetic retained observation','attachment')]);
  const importedB=importProjectBundle(a,{organizationId:'org-b',projectId:'project-b',ownerId:'owner-b',now});
@@ -93,7 +94,7 @@ describe('G1 project portability and consumer boundary',()=>{
  expect(()=>exportProjectBundle(fixture(),logs,[ancestor])).toThrow(/total payload limit/);
  const large=exportProjectBundle(fixture(),[payload('x'.repeat(4_200_000),'log','large-ancestor')]);
  expect(()=>exportProjectBundle(fixture(),[payload('y'.repeat(4_200_000),'log','large-local')],[large])).toThrow(/total payload limit/);
- });
+ },30_000);
  it('retains historical acceptance references and pending attempt payloads conservatively',()=>{
  const s=fixture();const roots=projectRetentionRoots(s);expect(roots.sourceRevisions).toContain('git-ref-opaque');expect(roots.manifestHashes).toHaveLength(2);expect(roots.evidenceIds).toContain('evidence');expect(roots.attachmentDigests).toContain(s.evidence[0]!.attachments[0]!.digest);expect(roots.buildDigests).toContain(s.proposals[0]!.envelope.buildDigest);expect(roots.canDeleteReferencedPayloads).toBe(false);
  });

@@ -507,3 +507,22 @@ HTTPS cases, exact observation subjects and 300-second bounds, real expiry to un
 initial source, unchanged current knowledge, and credential/local-path scan clean. Observation
 `environment:production` denotes the release channel within the isolated CI project; control
 Worker and deployment targets remain commonforge-ci-worker/cfci, not production infrastructure.
+
+## Landing review and CI portability fixes
+
+PR #1: https://github.com/CommonForge-org/commonforge/pull/1.
+The landing review rechecked acceptance, scoped agent authority, evidence binding, legacy source
+guards, and release binding. Local typecheck/build passed. A fresh uncached full unit run reported
+3,053 passes and five skips before correcting duplicate discovery described below.
+
+The first PR CI run exceeded the default five-second timeout in the test performing two real
+isolated workerd builds/verifications. That integration test now has an explicit 30-second timeout;
+all seven tests in its file passed locally with unchanged behavioral assertions.
+
+The next CI run exposed source-adjacent ledger tests being emitted into `dist` and then discovered
+again by Vitest. Ledger builds now exclude `src/**/*.test.ts`, and test discovery excludes `dist`
+even when stale output exists. The multi-megabyte bundle compatibility/limit tests have explicit
+30-second timeouts without reducing payload sizes or assertions. Ledger build/typecheck and all
+176 source tests passed after the fix; build-file inspection confirms source tests are excluded.
+Earlier aggregate unit totals include 44 duplicate ledger tests and must not be interpreted as
+unique test counts. PR checks are the authoritative landing result for the final head.
