@@ -1884,13 +1884,16 @@ OrgLedger. D1 indexes do not authorize native acceptance.
 - `POST …/native/enable {idempotencyKey}`: owner-only, permanent, settled legacy work and exclusive
   source membership required. Genesis source has no retroactive behavioral evidence.
 - `POST …/native/commands`: strict `ProjectCommandSchema`, `expectedGeneration`, `idempotencyKey`.
-  Knowledge/outcome/scenario drafts, confirmations, corrections, exact decisions, manual observations,
+  Knowledge/outcome/scenario drafts, confirmations, corrections, immutable `archiveScenario`, exact decisions, manual observations,
   and acceptance. Server checks current authority again inside acceptance. Public callers cannot
   provide runner provenance or create their own mandates/attempts.
 - `GET …/native/{outcomes,knowledge,scenarios,proposals,decisions,evidence,manifests,observations,attempts}`
   supports `cursor` offset and `limit` ≤100, returning `{items,nextCursor,generation}`.
 - `POST /api/tasks/:id/native/handoff {agentId}` issues a code (15-minute exchange window); only a
   person can issue it. Replacement revokes previous mandates for that task.
+- `POST /api/tasks/:id/native/renew {mandateId,revision,expectedGeneration,idempotencyKey,agentId}`
+  issues a human-authorized replacement with new attempt/context and fresh checkout required.
+  Exact usable retries are idempotent; agents cannot renew themselves. See `docs/agent-native/renewal.md`.
 - `POST /api/auth/task/verify {code}` consumes it once and returns a task lease, attempt, one-hour
   mandate and materialized context. It creates no user session.
 - `GET /api/tasks/:id/native/context` returns pinned JSON/Markdown/digest plus current generation and
@@ -1903,6 +1906,12 @@ OrgLedger. D1 indexes do not authorize native acceptance.
 - `POST /api/orgs/:org/projects/:pid/native/proposals/:proposal/verify {idempotencyKey}` calls the
   configured signed supervisor (loopback only for a local control plane, or operator-pinned HTTPS). Requests/results use explicit protocol 1; unsupported
   runtime/verifier/set/signature/subject fails closed. Job budgets and result ingestion are durable.
+  Candidate execution failures after established isolation may carry signed error evidence; preflight,
+  transport or unavailable isolation records `execution:not-established` without behavioral evidence.
+  Late valid superseded results remain job history and cannot satisfy current acceptance.
+- `GET …/native/proposals/:proposal/verifications?cursor=0&limit=50` returns bounded durable
+  owner/developer run history; task `native/results` filters it to that token’s own attempt.
+  Replaying a terminal verification key returns the historical result without another dispatch.
 - `PUT|GET|DELETE …/native/attachments/:sha256`: ≤1 MiB digest-checked project evidence bytes. DELETE
   refuses every referenced historical payload; tombstones serialize against evidence registration.
 - `GET …/native/bundle?includePayloads=1` exports validated history and retained evidence bytes with
@@ -1913,8 +1922,9 @@ OrgLedger. D1 indexes do not authorize native acceptance.
   and payloads across repeated imports. Responses advertise `bundleVersions: [1,2]`. Request
   `bundleVersion=1` for the original schema only when no imported lineage would be lost; unsupported
   versions and lossy version-1 exports refuse. The separate `importedHistory` field remains compatible.
-  Bounds apply across local and ancestor content: 16 MiB JSON, 8 MiB decoded payloads, 1,000 payloads,
-  32 ancestors and eight lineage levels. Exceeding them refuses rather than truncating history.
+  Both versions retain the original 16 MiB JSON and per-payload 8 MiB limits. Version 2 additionally
+  bounds local and ancestor content to 8 MiB decoded payloads, 1,000 entries, 32 ancestors and eight
+  lineage levels. Exceeding bounds refuses rather than truncating history.
 
 Source acceptance invokes existing `planCommit` checks and writes artifact heads plus project manifest
 in the same SQLite transaction. Native source locks also block legacy queue acceptance, restore and
