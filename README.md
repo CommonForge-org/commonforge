@@ -19,7 +19,8 @@ and its project knowledge. The reference product now includes confirmed rules, b
 pinned task context, independently verified changes, and durable correction history. The existing
 agency workflow remains available while a separate private agency consumer is developed.
 
-The **G1 implementation is under validation**. Run `pnpm dev:real-local` for the real Git/Worker/Node
+The **bounded G1 workflow is verified**, including real local execution, a fresh-agent handoff,
+and an isolated Cloudflare release/expiry/recovery rehearsal. Run `pnpm dev:real-local` for the real Git/Worker/Node
 stack, or `pnpm test:g1:local` for its bounded API and browser rehearsal. Knowledge, Outcomes and
 Review are available to owners/developers. New web projects default to this workflow; existing
 legacy projects retain explicit enablement.

@@ -1,8 +1,9 @@
 # CommonForge: software ownership for the agent era
 
-Status: proposed implementation baseline, following the owner's direction on 2026-10-17.
-This package plans future work; it does not claim the features are implemented.
-Repository inspected at `d5ab4eb`. Revalidate code details when implementation starts.
+Status: original implementation baseline, following the owner’s direction on 2026-10-17.
+The thesis and later milestones below remain planning context. For implemented G1 behavior,
+verified gates and bounded limitations, read [execution status](execution-status.md) and
+[the operating workflow](local-workflow.md). Baseline repository revision: `d5ab4eb`.
 
 CommonForge should be an open platform where people and AI agents turn expertise into
 working software, preserve what they learn, and keep that software working.

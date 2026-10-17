@@ -2,12 +2,13 @@
 
 Updated: 2026-10-17. Goal: durable project understanding across agent handoffs (M0–M5 only).
 
-**Current result:** the real-local implementation and actual fresh-agent continuity are validated.
-Full G1 is **not achieved**: a bounded matching Cloudflare/workerd verifier now passes local execution,
-but authorized isolated live release/observation/recovery remains unperformed. Concrete local
-source recovery now passes actual Git/runner/browser checks; see the final continuation record. No production change,
-private repository access, visibility/license change, package publication or infrastructure purchase
-was performed. See the final gate record below; earlier entries are chronological checkpoints.
+**Current result: bounded G1 achieved (M0–M5).** AN-01–AN-24 are verified within their declared
+scope, including actual fresh-agent continuity, real local Git/runner/browser execution, and the
+actual isolated Cloudflare release / real expiry / verified recovery gate. See the final completion
+record and [live evidence](evidence/live-cloud-report.json); earlier entries are historical checkpoints
+superseded by later measured results. Human domain-expert usability remains unobserved.
+No production change, private repository access, visibility/license change, package publication,
+remote Git push of this implementation branch, or new persistent infrastructure purchase occurred.
 
 ## Baseline
 
@@ -30,9 +31,9 @@ was performed. See the final gate record below; earlier entries are chronologica
 | W05 trusted scenario evidence | locally verified | fixed synthetic verifier, signed complete set, retry history |
 | W06 real local workflow | locally verified | actual Git smart HTTP, Worker, runner, R2 and static/API previews |
 | W07 reference UI | locally verified | default native onboarding, fresh folder genesis, real owner correction/preview/review/acceptance |
-| W08 release / recovery | partial | bounded workerd adapter, exact historical source recovery and signed Git bridge verified locally; authorized cloud gate outstanding |
+| W08 release / recovery | verified, bounded | actual isolated release, observation, real expiry and fresh recovery; vars-only workerd scope |
 | W09 portability / agency contract | locally verified, bounded | history/evidence payloads without trust; Git restoration not implemented |
-| W10 integrated review / rehearsal | local gates verified | actual fresh-agent/self-development evidence; full release gate not achieved |
+| W10 integrated review / rehearsal | verified | actual fresh-agent/self-development, independent audit, local and isolated live gates |
 
 ## Decisions and authority map
 
@@ -134,13 +135,13 @@ release invariant is distinct from a successful live release (AN-21).
 | AN-12 | pass | native security expiry/revoke/single-use tests, source acceptance mandate checks, replacement handoff revocation; old provider token residual TTL is bounded |
 | AN-13 | pass | exact envelope resulting-head checks and preview source-map regression; changed integration output cannot reuse the prior subject |
 | AN-14 | pass | packaged real-local Playwright owner correction + exact-source preview + nine results + approve/accept; no JSON/Git entered in owner UI; synthetic automated owner, not user validation |
-| AN-15 | pass | release/core tests distinguish accepted/deployed/healthy/unhealthy/expired-unknown; no live G1 deployment claimed |
-| AN-16 | pass (real local workflow) | browser prepares historical source under current knowledge, fresh signed9 passes, atomic restore+manifest, actual canonical Git ref synced and repeated isolated9; declared/data effects and unsupported artifact checks refused; successful cloud recovery remains AN-21 |
+| AN-15 | pass | release/core tests plus actual isolated accepted/deployed/healthy and real expired-unknown projection; no continuous monitoring claim |
+| AN-16 | pass (real local workflow) | browser prepares historical source under current knowledge, fresh signed9 passes, atomic restore+manifest, actual canonical Git ref synced and repeated isolated9; declared/data effects and unsupported artifact checks refused; actual bounded stateless cloud recovery verified in AN-21 |
 | AN-17 | pass | bundle conformance + actual API history round-trip, real R2 payload export; imports create local drafts/authority and retain untrusted exact archive; Git is not automatically restored |
 | AN-18 | pass | legacy core vectors, ledger/Worker migration and full existing suites; shipped SQLite migrations 1–3 unchanged, native migration 4 appended; D1 0019 appended |
 | AN-19 | pass | actual credentialed smart HTTP clone/push/revoke, Node runner, R2, static and isolated API preview; `test:g1:local` and retained real reports |
 | AN-20 | pass | actual fork-none Codex implementation, exact context/input hashes, real verification and accepted manifest described above |
-| AN-21 | not_run | bounded workerd verifier now locally verified; authorized isolated Cloudflare release, observation and recovery run not performed; this blocks full G1 achievement |
+| AN-21 | pass | actual isolated CI releases, nine HTTPS scenarios per deployment, exact observation bindings, real expiry to unknown, fresh recovery preserving current knowledge; evidence/live-cloud-report.json |
 | AN-22 | pass | public build + synthetic agency consumer contract tests; no private package/config/repository dependency |
 | AN-23 | pass | actual candidate mount/PID/network namespace tests deny controlling secret/network; own-development source snapshot and candidate run separately; external same-OS-account agent is not a multi-tenant sandbox |
 | AN-24 | pass (conservative policy) | real R2 + authoritative payload registry race/fault tests, all-history retention, permanent tombstone before delete, missing/corrupt bytes detected; automatic orphan expiry not implemented |
@@ -440,3 +441,69 @@ not_run with that deadline. No clock override. AN-21 remains partial until expir
 Rehearsal interruption/name-adoption safeguards committed as `ddc72d1`; seven actual local
 Git/workerd tests plus runner build/typecheck passed. Signed source verification and actual
 Cloudflare output remain separately identified, not inferred byte equivalence.
+
+### Real freshness expiry verified
+
+At `2026-10-17T22:08:21.714Z`, after the actual `22:08:08.138Z` deadline, the initial live
+release API reported `healthState:unknown`. No clock override or fabricated result. Recovery
+phase is now running against the same isolated project/target, first creating a distinct later
+source/release before restoring the first accepted source under unchanged current knowledge.
+AN-21 remains incomplete until the recovery release and its actual HTTPS behavior/observation pass.
+
+Independent re-review of `ddc72d1` confirmed both rehearsal findings closed: no name-only project
+adoption, durable pre-push intent, exact remote verification and refusal of foreign movement.
+An interruption after successful freeze but before saving the candidate identifier may still
+require operator inspection, as documented for interrupted external operations. No new blocker.
+
+## Final G1 completion record
+
+All required technical gates now pass. Actual isolated cloud report is retained at
+`docs/agent-native/evidence/live-cloud-report.json`, not the private operator checkpoint.
+
+| Live phase | Empirical result |
+|---|---|
+| Initial | exact accepted manifest, separately approved built output, actual release identity and nine deployed HTTPS scenario passes, bound healthy observation |
+| Expiry | actual `2026-10-17T22:08:21.714Z` read after five-minute deadline reports unknown; no clock override |
+| Later | distinct source/accepted manifest and output; actual separately approved deployment and nine HTTPS passes |
+| Recovery | fresh nine signed checks and exact owner-role decision, atomic accepted source recovery, unchanged current knowledge, separately approved third deployment, actual historical variant and nine HTTPS passes, new bound healthy observation |
+
+Recovery manifest: `c7077a80ca3ea2f0880f2f621b8133eeafadb5b4b4088f3cd36b50a86280b512`.
+Recovery release: `rel-fcaf0253609f3ab5adf11532`; output
+`d801d3e2948eb4c9343c6361ccc8c741b393b870c25ed2c9c8b4b0d2caff49fc`.
+All three deployments use the same exact task-owned cfci target. The source supervisor ran real
+isolated workerd against exact remote Artifacts source; actual Sandbox builds and actual deployed
+HTTPS cases are separately recorded. There is no inferred compiled-byte equivalence or mocked
+cloud pass. Scripted owner decisions are synthetic automation, not observed human validation.
+
+Cleanup: CI-only temporary verifier URL removed by successful deployment; /health still reports
+ci/log. Task-owned supervisor/tunnel stopped and loopback port verified closed. Existing CI secrets,
+production resources and unrelated processes were unchanged. Synthetic project/Git history/evidence
+and the stateless cfci recovery deployment remain for inspection; health is a time-bounded observation
+and will become unknown. A new run requires an operator-configured trusted HTTPS supervisor.
+No permanent supervisor infrastructure or new database/bucket/queue was provisioned.
+
+Verification totals remain: 3,046 full-suite unit passes /5 existing skips; 392 security passes
+/1 existing skip; 20 fault passes; five actual real-local browser journeys plus canonical recovery;
+21-task typecheck and 13-task build. Subsequent rehearsal-only safeguards passed seven targeted
+real Git/workerd tests and runner build/typecheck. Skips do not substantiate any real gate.
+Public report passed independent structural assertions and credential scan. Independent requirement
+review found no further local M0–M5 blocker; independent safety review confirmed its findings fixed.
+
+Known bounded limits: dedicated source membership/no shared staging; metadata and source changes
+accepted in two steps; explicit renewal creates a fresh attempt/context/workspace; directory-barrier
+repair may need quiescent operator work; interrupted external operations may require inspection;
+Git content is not automatically restored from metadata bundles; conservative permanent evidence
+retention/tombstones; one bundled vars-only Worker runtime with no persistent/external effects;
+same-family fresh agent only; no observed domain-expert human usability or continuous monitoring.
+Legacy workflows, original v1 hashes and prior migrations remain compatible. Agency extraction stays
+incremental, with only the synthetic consumer contract in this public repository.
+
+**Next recommended goal:** validate the public reference workflow with domain experts, then start a
+separately authorized private agency consumer integration using the existing public contracts.
+G1 stops here. M6–M8 are not started. No branch push, PR or package publication is performed.
+
+Final independent AN-21 evidence audit passed: three distinct releases and 27 actual deployed
+HTTPS cases, exact observation subjects and 300-second bounds, real expiry to unknown, restored
+initial source, unchanged current knowledge, and credential/local-path scan clean. Observation
+`environment:production` denotes the release channel within the isolated CI project; control
+Worker and deployment targets remain commonforge-ci-worker/cfci, not production infrastructure.

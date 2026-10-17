@@ -1931,7 +1931,7 @@ in the same SQLite transaction. Native source locks also block legacy queue acce
 head adoption. Fresh dedicated folders initialize atomically; existing source attachment/detach and
 staging mutations are unsupported after enablement. Native release
 preparation/publish/deploy require a manifest mapping and matching runtime; legacy-prepared releases
-cannot bypass it. See `docs/agent-native/release-rehearsal.md` for the unverified live gate.
+cannot bypass it. See `docs/agent-native/release-rehearsal.md` for runtime prerequisites and actual isolated live evidence.
 
 Stable refusal codes include `revision_conflict`, `knowledge_stale`, `context_too_large`,
 `context_forbidden`, `mandate_revoked`, `mandate_expired`, `mandate_scope_denied`,

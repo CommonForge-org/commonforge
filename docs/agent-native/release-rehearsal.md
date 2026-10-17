@@ -1,4 +1,4 @@
-# Native release bridge and outstanding live gate
+# Native release bridge and verified isolated rehearsal
 
 G1 production release preparation binds the latest verified accepted project manifest, current
 knowledge/policy, exact source revisions, and exact runtime recipe/environment digest. The native
@@ -8,8 +8,9 @@ deployed afterward. Shared staging is unsupported for enabled projects.
 
 `scenarioBuildDigest` identifies the verified **source revision set**. It does not hash compiled
 deployment files. The release `outputDigest` separately identifies the signed runner's built files
-and deploy configuration, and publish approval binds that output. G1 does not claim scenario tests
-executed against those rebuilt deployment bytes. The runtime digest must equal
+and deploy configuration, and publish approval binds that output. Pre-release scenario evidence is not a claim that tests executed against later rebuilt bytes.
+The dedicated isolated rehearsal additionally checked all nine cases against each actual deployed
+HTTPS Worker after release, with its release identity and output digest recorded separately. The runtime digest must equal
 `nativeRuntimeRecipeDigest(recipe, environment)`; the environment is the exact existing release
 `ReleaseEnvironment`, including account, targets, production environment, health check and migrations.
 A local Node fixture runner's different runtime cannot authorize production: the bridge fails closed.
@@ -26,7 +27,15 @@ are never represented as automatically reverted.
 
 ## Dedicated isolated Cloudflare rehearsal
 
-This task does not authorize deployment of the candidate into the running control plane. A live
+The actual isolated CI rehearsal passed on 2026-10-17: initial release, real five-minute expiry
+to unknown, a distinct later release, and fresh verified recovery preserving current knowledge.
+All three actual deployments passed all nine behavioral cases; observations bind exact
+manifest/output digests. See [public evidence](evidence/live-cloud-report.json),
+[execution status](execution-status.md) and [phased operator workflow](live-ci-rehearsal.md).
+The temporary HTTPS transport was removed afterward; configure a trusted supervisor for new runs.
+No production change, private repository access or new persistent infrastructure was involved.
+
+Candidate self-development verification must not replace its running control instance. A live
 G1 rehearsal needs a separate Cloudflare account/namespace, owner-approved release policy, disposable
 demo-only D1/KV/R2, runner job keys stored in its supervisor, a real Sandbox/runner, and an external
 Git/bootstrap recovery route. Its scenario verifier must execute the deployment runtime and bind
@@ -40,12 +49,10 @@ submit an envelope with its exact source/runtime digests; request real verificat
 exact decision; accept; prepare release; inspect signed build outputs; publish approval; deploy;
 observe the resulting release and wait past the freshness bound to verify `unknown`.
 
-`pnpm test:live` alone is the legacy live suite and is not the dedicated G1 acceptance gate. No
-successful G1 Cloudflare run is claimed here. The bounded executable supervisor below is locally
-verified; it still needs an authorized isolated target and remote integration rehearsal. Record the
-command, revision, credentials-free artifact paths, account isolation, deployment identity and
-observations in `execution-status.md` before marking that gate verified. Until then the live G1
-release gate remains unverified.
+`pnpm test:live` alone is the legacy live suite and is not the dedicated G1 acceptance gate.
+The dedicated phased rehearsal above supplies the actual remote evidence. For another deployment,
+record commands, revision, credentials-free artifact paths, isolation, identity and observations;
+local protocol tests cannot substitute for that deployment’s actual execution.
 
 
 ## Locally verified Cloudflare runtime adapter
@@ -89,19 +96,20 @@ matching the isolated control plane's k1 signing secret. Candidate processes rec
 the loopback listener behind an operator-managed HTTPS endpoint, then configure the isolated Worker's
 `COMMONFORGE_SCENARIO_RUNNER_URL` to that endpoint. The Worker refuses HTTP/auth/query/fragment/local
 remote URLs, does not follow redirects, and validates explicit protocol capabilities plus signed
-exact-subject results. Existing localhost-only Node configuration remains unchanged. No endpoint,
-account, credential or deployment was configured by this task.
+exact-subject results. Existing localhost-only Node configuration remains unchanged. The actual
+rehearsal used a temporary operator-owned transport and the preexisting isolated CI account.
 
 The actual signed bridge/Git/workerd tests establish the adapter and source binding. The REST source
-registration test uses a transport double; real remote Artifacts access remains part of the live gate.
+registration unit test uses a transport double; the dedicated live rehearsal separately exercised
+real remote Artifacts reads and Sandbox source/build jobs.
 Scenario evidence still binds source+recipe, not a guarantee that a later production rebuild has
 identical bytes. Publish approval separately binds that release's outputDigest. Retain external CI/Git
-as the recovery bridge and complete AN-21 before describing G1 as achieved.
+as the recovery bridge. AN-21 is verified only for the declared bounded stateless scope.
 
 
 Local recovery is now exercised end-to-end by `pnpm test:g1:local`: human-role browser preparation,
 fresh signed current scenarios, exact decision, atomic restore, actual canonical Git reconciliation
 and repeated isolated behavior. This is a local provider recovery proof, not a cloud deployment.
 Recovery refuses declared/intervening external effects, configured/recorded data migrations and
-unsupported current mandatory legacy artifact checks/contracts. The corresponding live sequence
-still needs the isolated target and must obtain separate release/publish authorization.
+unsupported current mandatory legacy artifact checks/contracts. The corresponding live sequence passed in the existing isolated CI scope with separate explicit
+release/publish approvals. Persistent effects and broader runtime shapes remain unsupported.

@@ -2,7 +2,10 @@
 
 `apps/runner/src/g1-cloud-rehearsal.ts` prepares and executes the G1 live gate through the
 real public API, Artifacts Git, existing Sandbox runner, pinned workerd scenario supervisor,
-and existing gated release services. This document does not claim a cloud run occurred.
+and existing gated release services. The actual 2026-10-17 isolated run passed; see
+[evidence/live-cloud-report.json](evidence/live-cloud-report.json) and
+[execution status](execution-status.md). The instructions below support a new operator run;
+local preparation tests alone do not establish its cloud result.
 
 The executable refuses production control-plane origins and release names. It accepts only
 `https://commonforge-ci-worker.<account-subdomain>.workers.dev`, `commonforge-ci-worker`, and

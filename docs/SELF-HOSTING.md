@@ -200,4 +200,6 @@ owner browser journey; `pnpm dev:local` continues to use fakes. See
 [local setup and limitations](agent-native/local-workflow.md) and
 [measured execution status](agent-native/execution-status.md). Existing production bootstrap and
 GitHub CI remain the recovery/distribution bridge. The default Node scenario runtime cannot authorize
-a different Cloudflare runtime. A separate bounded pinned workerd adapter is locally verified; [the live gate](agent-native/release-rehearsal.md) remains separate.
+a different Cloudflare runtime. A separate bounded pinned workerd adapter and an actual isolated release/expiry/recovery rehearsal
+are verified; operators must configure their own trusted HTTPS supervisor and exact runtime scope.
+See [release setup and evidence](agent-native/release-rehearsal.md).

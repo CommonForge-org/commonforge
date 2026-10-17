@@ -436,12 +436,14 @@ Current native limitations:
 - Native release bindings and five-minute observations are implemented, but the local Node source/runtime
   verifier cannot authorize a different Cloudflare deployment runtime. A bounded actual workerd source/build verifier now uses the matching recipe/environment digest
   and has passed local signed/Git/namespace tests. It supports one bundled vars-only Worker, no
-  external bindings/migrations/assets. Remote infrastructure integration and a real authorized isolated
-  Cloudflare release/recovery rehearsal remain outstanding; production rebuild bytes are separately approved. No native
+  external bindings/migrations/assets. Remote Artifacts integration and a real authorized isolated
+  Cloudflare release/expiry/recovery rehearsal passed on the existing isolated CI target; a trusted
+  supervisor must still be configured by each operator. Release rebuild bytes are separately approved. No native
   production deployment or continuous monitoring is claimed.
 - Local historical source recovery is implemented and exercised through real browser/Git/runner
   execution. It refuses declared/data effects and unsupported current mandatory artifact checks/contracts;
-  no database/external reversal is claimed. Cloud recovery still requires the isolated live gate.
+  no database/external reversal is claimed. The bounded stateless cloud recovery gate passed;
+  this does not establish recovery of persistent or external effects.
 - Bundles preserve historical metadata and available evidence bytes without importing trust. They
   explicitly report missing Git content, are not complete backups, and do not restore Git repositories.
   Evidence bytes are conservatively retained across all history. Only unreferenced bytes can be deleted;
