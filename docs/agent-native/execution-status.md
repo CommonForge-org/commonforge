@@ -413,3 +413,16 @@ D1/queues/R2/namespace; obtain a synthetic log-mode owner session and new task-o
 execute the dedicated live release/real-five-minute-expiry/recovery phases. Existing CI secrets
 are preserved. No production mutation, private repo, package publication, purchase or push.
 AN-21 remains not_run until empirical remote evidence is recorded. Goal active, M0–M5 only.
+
+### Isolated live execution started
+
+Audited local implementation committed as `93aad88`. Existing CI-only migration and Worker
+deployment completed; /health reports deployment=ci, emailMode=log. No infrastructure setup or
+secret replacement was run. A new synthetic owner and new task-owned organization/project were
+created; actual Sandbox folder initialization completed with a real Git head. The registered
+source supervisor reports matching verifier/runtime digests and nine scenarios through HTTPS.
+CI-only verifier transport configuration was deployed; no production mutation occurred.
+Private operator state/logs live under ignored .g1-artifacts/live-* (must not publish checkpoint).
+Independent review found and is tightening name-only project adoption and interrupted-push
+resumption in the rehearsal; product/release target checks and credential/report filtering passed
+review. Actual source/release/expiry/recovery gate still pending; do not count this setup as AN-21.

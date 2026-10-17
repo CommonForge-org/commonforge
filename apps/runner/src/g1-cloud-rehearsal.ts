@@ -1,8 +1,8 @@
 /** Dedicated G1 live CI rehearsal. Phased operator execution; importing/planning never contacts cloud. */
 import { randomUUID } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, rename, writeFile } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, readFile, rename, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 import { configDigest } from '@commonforge-org/runner-protocol';
@@ -10,7 +10,7 @@ import { canonicalJson, ProjectStateSchema, type BuildRecipe, type ProjectState 
 import { createCloudflareSchedulingAdapter } from './g1-cloudflare-source.js';
 import type { CloudflareReleaseEnvironment } from './g1-cloudflare-verifier.js';
 import { cases } from './g1-scheduling-harness.js';
-import { createGit, RUNNER_IDENTITY_ENV } from './git.js';
+import { createGit, RUNNER_IDENTITY_ENV, type Git } from './git.js';
 
 export const G1CloudRehearsalConfigSchema = z.object({
   schemaVersion: z.literal(1), runId: z.string().regex(/^[a-z0-9][a-z0-9-]{0,31}$/),
@@ -50,6 +50,64 @@ export function cloudRehearsalPlan(config: G1CloudRehearsalConfig) {
     persistentBindings: [], migrations: [], outboundFixtureEffects: [],
     prerequisite: 'parent must authorize exact isolated CI target before enabling mutation/deployment flags; owner session and supervisor credentials remain private',
     noProvisioning: true, noProductionTarget: true, noCloudClaimFromLocalTests: true };
+}
+export function requireFreshCloudProjectName(projects: Array<{name: string}>, name: string): void {
+  if (projects.some(project => project.name === name)) throw new Error('matching project exists without this run checkpoint; refuse name-only adoption and require operator inspection');
+}
+export interface CloudSourcePushCheckpoint { workspace?: string; intendedSha?: string; expectedRemoteSha?: string; sha?: string }
+/** Persist immutable commit intent BEFORE a possibly ambiguous push. Retry observes the exact remote ref. */
+export async function pushResumableCloudSource(options: {
+  cycle: CloudSourcePushCheckpoint; remoteUrl: string; credentialSecret: string; files: Record<string,string>; label: string;
+  checkpointDirectory: string; persist(): Promise<void>; git?: Git;
+}): Promise<string> {
+  const { cycle, files } = options, git = options.git ?? createGit();
+  const env = { GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: `http.${options.remoteUrl}.extraHeader`, GIT_CONFIG_VALUE_0: `Authorization: Bearer ${options.credentialSecret}` };
+  const validSha = (sha: string | undefined): sha is string => !!sha && /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(sha);
+  const remoteHead = async () => {
+    const refs = await git.ok(['ls-remote', options.remoteUrl, 'refs/heads/main'], options.checkpointDirectory, { env });
+    const sha = refs.trim().split(/\s+/)[0]; if (!validSha(sha)) throw new Error('task source remote main is absent or malformed'); return sha;
+  };
+  let remote = await remoteHead();
+  // Legacy complete checkpoints are also rechecked rather than silently trusting a push label.
+  if (!cycle.intendedSha && cycle.sha) cycle.intendedSha = cycle.sha;
+  if (cycle.intendedSha && !validSha(cycle.intendedSha)) throw new Error('saved source intent is not an immutable full Git SHA');
+  if (cycle.intendedSha && remote === cycle.intendedSha) { cycle.sha = cycle.intendedSha; await options.persist(); return cycle.sha; }
+  if (cycle.expectedRemoteSha && remote !== cycle.expectedRemoteSha) throw new Error('task remote moved from checkpointed base; refuse to overwrite another change');
+  if (!cycle.workspace) {
+    const root = await mkdtemp(join(tmpdir(), 'commonforge-g1-cloud-source-')); cycle.workspace = join(root, 'candidate');
+    cycle.expectedRemoteSha = remote; await options.persist();
+  }
+  const exists = await access(join(cycle.workspace, '.git')).then(() => true, () => false);
+  if (!exists) {
+    if (cycle.intendedSha) throw new Error('intended source commit is not pushed and its checkpointed workspace is unavailable');
+    // A partial failed clone is left as task-owned evidence; retry gets a new private workspace.
+    if (await access(cycle.workspace).then(() => true, () => false)) {
+      const root = await mkdtemp(join(tmpdir(), 'commonforge-g1-cloud-source-')); cycle.workspace = join(root, 'candidate'); await options.persist();
+    }
+    await git.ok(['clone', '-q', options.remoteUrl, cycle.workspace], dirname(cycle.workspace), { env });
+  }
+  if (!cycle.expectedRemoteSha) { cycle.expectedRemoteSha = remote; await options.persist(); }
+  const work = cycle.workspace;
+  if (!cycle.intendedSha) {
+    for (const [path, value] of Object.entries(files)) await writeFile(join(work, path), value);
+    await git.ok(['add', '--', ...Object.keys(files)], work);
+    const staged = await git.run(['diff', '--cached', '--quiet'], work);
+    const head = (await git.ok(['rev-parse', 'HEAD'], work)).trim();
+    if (staged.code === 1) await git.ok(['commit', '-q', '-m', `G1 isolated live fixture ${options.label}`], work, { env: RUNNER_IDENTITY_ENV(new Date().toISOString()) });
+    else if (staged.code !== 0 || head === cycle.expectedRemoteSha) throw new Error('no distinct intended source change; refuse an unrecorded no-op commit');
+    cycle.intendedSha = (await git.ok(['rev-parse', 'HEAD'], work)).trim();
+    if (!validSha(cycle.intendedSha)) throw new Error('prepared source commit is malformed');
+    await options.persist();
+  }
+  await git.ok(['cat-file', '-e', `${cycle.intendedSha}^{commit}`], work);
+  for (const [path, expected] of Object.entries(files)) if (await git.ok(['show', `${cycle.intendedSha}:${path}`], work) !== expected) throw new Error('checkpointed intended source differs from the exact rehearsal variant');
+  remote = await remoteHead();
+  if (remote !== cycle.intendedSha) {
+    if (remote !== cycle.expectedRemoteSha) throw new Error('task remote moved before push; refuse to overwrite another change');
+    await git.ok(['push', '-q', `--force-with-lease=refs/heads/main:${cycle.expectedRemoteSha}`, options.remoteUrl, `${cycle.intendedSha}:refs/heads/main`], work, { env });
+  }
+  if (await remoteHead() !== cycle.intendedSha) throw new Error('actual remote ref does not match checkpointed intended source');
+  cycle.sha = cycle.intendedSha; await options.persist(); return cycle.sha;
 }
 interface Checkpoint { schemaVersion: 1; runId: string; configDigestInput: string; projectId?: string; resourceId?: string; setupComplete?: boolean; knowledgeComplete?: boolean; registration?: unknown; verifierDigest?: string; runtimeRecipeDigest?: string; cycles: Record<string, any>; releases: Record<string, any>; expiry?: unknown; recovery?: any; steps: Array<{ phase: string; operation: string; at: string; status: number }> }
 const rememberedSecrets: string[] = [];
@@ -99,8 +157,8 @@ export class G1CloudRehearsal {
     const name = `G1 isolated cloud rehearsal ${this.config.runId}`;
     if (!this.checkpoint.projectId) {
       const projects = await this.api('GET', `/orgs/${this.config.organizationId}/projects`);
-      const matches = projects.projects.filter((p: any) => p.name === name); if (matches.length > 1) throw new Error('ambiguous existing rehearsal project');
-      this.checkpoint.projectId = matches[0]?.projectId ?? (await this.api('POST', `/orgs/${this.config.organizationId}/projects`, { name, mode: 'agent-native' })).projectId; await this.save();
+      requireFreshCloudProjectName(projects.projects, name);
+      this.checkpoint.projectId = (await this.api('POST', `/orgs/${this.config.organizationId}/projects`, { name, mode: 'agent-native' })).projectId; await this.save();
     }
     if (!this.checkpoint.resourceId) {
       const folders = await this.api('GET', `${this.root}/folders`);
@@ -145,16 +203,10 @@ export class G1CloudRehearsal {
       const agent = await this.api('POST', '/auth/task/verify', { code: handoff.code });
       cycle.leaseToken = agent.leaseToken; cycle.contextDigest = agent.context.digest; rememberedSecrets.push(agent.leaseToken); await this.save();
     }
-    if (!cycle.sha) {
+    if (!cycle.candidateId) {
       const credential = await this.api('POST', `/tasks/${cycle.taskId}/credential`, { mountName: 'api', access: 'write' }, cycle.leaseToken); rememberedSecrets.push(credential.secret);
-      const workRoot = await mkdtemp(join(tmpdir(), 'commonforge-g1-cloud-source-')), work = join(workRoot, 'candidate'); cycle.workspace = work;
-      const git = createGit(), env = { GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: `http.${credential.remoteUrl}.extraHeader`, GIT_CONFIG_VALUE_0: `Authorization: Bearer ${credential.secret}` };
-      await git.ok(['clone', '-q', credential.remoteUrl, work], workRoot, { env });
-      const files = await cloudFixtureFiles(label);
-      for (const [path, value] of Object.entries(files)) await writeFile(join(work, path), value);
-      await git.ok(['add', '--', 'worker.mjs', 'build.mjs', 'wrangler.json'], work);
-      await git.ok(['commit', '-q', '-m', `G1 isolated live fixture ${label}`], work, { env: RUNNER_IDENTITY_ENV(new Date().toISOString()) });
-      const sha = (await git.ok(['rev-parse', 'HEAD'], work)).trim(); await git.ok(['push', '-q', 'origin', 'HEAD:refs/heads/main'], work, { env }); cycle.sha = sha; await this.save();
+      await pushResumableCloudSource({ cycle, remoteUrl: credential.remoteUrl, credentialSecret: credential.secret,
+        files: await cloudFixtureFiles(label), label, checkpointDirectory: this.directory, persist: () => this.save() });
     }
     if (!cycle.candidateId) {
       const task = await this.api('GET', `/tasks/${cycle.taskId}`), workspace = task.workspaces.find((w: any) => w.mountName === 'api');
