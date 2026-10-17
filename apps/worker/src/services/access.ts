@@ -174,7 +174,7 @@ export async function setProjectAccess(svc: Services, actor: OrgActor, projectId
 
   // shared folders: never below the level the person's other projects give them (capped by role)
   const floors = floorsOf(await otherProjectGrants(svc, actor.orgId, projectId, change.userId), role);
-  if (change.level !== "write" || Object.values(exceptions).some(level => level !== "write")) await svc.ledger(actor.orgId).revokeNativeAuthority(actor.orgId, change.userId);
+  const nativeTransition = change.level !== "write" || Object.values(exceptions).some(level => level !== "write") ? await svc.ledger(actor.orgId).revokeNativeAuthority(actor.orgId, change.userId) : null;
   const now = svc.nowIso();
   const writes: Array<{ kind: "project" | "resource"; id: string; ops: Operation[] }> = [];
   const want = (kind: "project" | "resource", id: string, level: Level) => {
@@ -235,6 +235,7 @@ export async function setProjectAccess(svc: Services, actor: OrgActor, projectId
     for (const editionId of editionGrants)
       await recordEvent(svc, { orgId: actor.orgId, projectId, actor: userRef(actor.userId), action: "edition.grant_revoked", subjectKind: "edition", subjectId: editionId, detail: { userId: change.userId } });
   }
+  if(nativeTransition)await svc.ledger(actor.orgId).finishNativeAuthorityRevocation(actor.orgId,nativeTransition);
   return (await projectAccess(svc, actor.orgId, projectId, actor)).find((p) => p.userId === change.userId)!;
 }
 

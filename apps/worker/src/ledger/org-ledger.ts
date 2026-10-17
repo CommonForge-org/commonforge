@@ -252,22 +252,93 @@ export class OrgLedger extends DurableObject<Env> {
    * resource ownership and exact accepted heads are rechecked atomically here. */
   async enableNativeProject(raw: unknown): Promise<string> {
     const q = z.object({ organizationId: IdSegmentSchema, projectId: IdSegmentSchema, actorId: z.string().min(1),
-      policyRevision: z.number().int().nonnegative(), sourceHeads: z.array(z.object({resourceId:z.string(),revisionId:z.string()})).max(1000),
+      creation: z.boolean().optional(), policyRevision: z.number().int().nonnegative(), sourceHeads: z.array(z.object({resourceId:z.string(),revisionId:z.string()})).max(1000),
       authorities: z.array(z.object({principalId:z.string(),role:z.enum(['owner','developer']),revision:z.number().int().nonnegative(),active:z.boolean()})).max(1000),
     }).strict().parse(raw);
     return this.#rpc(() => this.#recordTx(q.organizationId, tx => {
       const existing = tx.getNativeProjectJson(q.projectId);
       if (existing) return existing;
       const s = createProjectState(q.organizationId, q.projectId);
-      s.authorities = q.authorities; s.sourceHeads = q.sourceHeads; s.policyRevision = q.policyRevision;
-      if (!s.authorities.some(a => a.principalId === q.actorId && a.active && a.role === 'owner')) throw new ProjectError('authority_denied', 'owner enablement required');
+      s.authorities = q.authorities.map(a=>({...a,active:a.active&&!tx.nativeAuthorityTransitionPending(a.principalId)})); s.sourceHeads = q.sourceHeads; s.policyRevision = q.policyRevision;
+      if (!s.authorities.some(a => a.principalId === q.actorId && a.active && (a.role === 'owner' || q.creation === true && q.sourceHeads.length === 0 && a.role === 'developer'))) throw new ProjectError('authority_denied', 'owner enablement or fresh empty project creation required');
+      if(tx.projectResourceReservations(q.projectId).some(id=>!s.sourceHeads.some(h=>h.resourceId===id)))throw new ProjectError('review_subject_changed','source setup or prior attachment requires reconciliation before enablement');
       for (const h of s.sourceHeads) {
-        if (tx.nativeResourceProject(h.resourceId) || tx.getResourceOrganization(h.resourceId) !== q.organizationId || tx.getHead(h.resourceId)?.revisionId !== h.revisionId) throw new ProjectError('review_subject_changed', 'source ownership or head changed');
+        if (tx.hasOtherResourceMount(h.resourceId,q.projectId) || tx.nativeResourceProject(h.resourceId) || tx.getResourceOrganization(h.resourceId) !== q.organizationId || tx.getHead(h.resourceId)?.revisionId !== h.revisionId) throw new ProjectError('review_subject_changed', 'source ownership or head changed');
       }
       const value = canonicalJson(createNativeGenesis(s,{actorId:q.actorId,now:this.#now()}));
       tx.putNativeProjectJson(q.projectId,q.organizationId,s.generation,value);
       for (const h of s.sourceHeads) tx.lockNativeResource(h.resourceId,q.projectId);
       return value;
+    }));
+  }
+
+  /** Permanent attachment history serializes legacy attachment against native ownership. */
+  async reserveResourceMount(organizationId:string,projectId:string,resourceId:string):Promise<void> {
+    return this.#rpc(()=>this.#recordTx(organizationId,tx=>{
+      const owner=tx.nativeResourceProject(resourceId);
+      if(tx.getNativeProjectJson(projectId)&&owner!==projectId)throw new ProjectError('project_mode_unsupported','project mode changed; create a reserved native source');
+      if(owner&&owner!==projectId)throw new ProjectError('project_mode_unsupported','native sources cannot be shared');
+      tx.reserveResourceMount(resourceId,projectId);
+    }));
+  }
+
+  async nativeSourceProject(resourceId:string):Promise<string|null> {
+    return this.#rpc(()=>this.#store.transactionSync(tx=>tx.nativeResourceProject(resourceId)));
+  }
+  /** Reserve a fresh source before it is visible in a directory mount or setup job. */
+  async reserveNativeSource(organizationId:string,projectId:string,actorId:string,resourceId:string):Promise<void> {
+    return this.#rpc(()=>this.#recordTx(organizationId,tx=>{
+      const stored=tx.getNativeProjectJson(projectId);if(!stored)throw new ProjectError('project_not_found','project is not enabled');
+      const s=ProjectStateSchema.parse(JSON.parse(stored));
+      if(!s.authorities.some(a=>a.principalId===actorId&&a.active&&a.role!=='agent'))throw new ProjectError('authority_denied','active human project authority required');
+      const owner=tx.nativeResourceProject(resourceId);
+      if(owner===projectId)return;
+      if(owner||tx.hasOtherResourceMount(resourceId,projectId)||tx.getHead(resourceId)||tx.getResourceOrganization(resourceId)!==null)throw new ProjectError('review_subject_changed','source reservation requires an unbound resource');
+      tx.lockNativeResource(resourceId,projectId);
+    }));
+  }
+
+  /** Fresh folder genesis only. Existing source changes still require native acceptance. */
+  async initializeNativeSource(raw:unknown):Promise<LedgerResult> {
+    const q=z.object({organizationId:IdSegmentSchema,projectId:IdSegmentSchema,actorId:z.string().min(1),resourceId:z.string().min(1),revisionId:z.string().min(1),idempotencyKey:z.string().min(1).max(256)}).strict().parse(raw);
+    return this.#rpc(()=>this.#recordTx(q.organizationId,tx=>{
+      const stored=tx.getNativeProjectJson(q.projectId);if(!stored)throw new ProjectError('project_not_found','project is not enabled');
+      const s=ProjectStateSchema.parse(JSON.parse(stored));
+      if(!s.authorities.some(a=>a.principalId===q.actorId&&a.active&&a.role!=='agent'))throw new ProjectError('authority_denied','active human project authority required');
+      if(tx.hasOtherResourceMount(q.resourceId,q.projectId))throw new ProjectError('review_subject_changed','source attachment history belongs to another project');
+      const ownership=tx.nativeResourceProject(q.resourceId),head=s.sourceHeads.find(h=>h.resourceId===q.resourceId);
+      if(ownership && (ownership!==q.projectId || head && head.revisionId!==q.revisionId))throw new ProjectError('review_subject_changed','source already belongs to an accepted project');
+      if(!head && (tx.getHead(q.resourceId)||tx.getResourceOrganization(q.resourceId)!==null))throw new ProjectError('review_subject_changed','source genesis requires an unbound resource');
+      const now=this.#now();
+      const d=executeBindHead(tx,{organizationId:q.organizationId,resourceId:q.resourceId,revisionId:q.revisionId,idempotencyKey:q.idempotencyKey,actor:{kind:'user',id:q.actorId}},now);
+      if(!d.ok)return toResult(d);
+      if(head){if(!d.replayed)throw new ProjectError('review_subject_changed','source genesis is already recorded');return toResult(d);}
+      if(d.replayed)throw new ProjectError('review_subject_changed','source was initialized outside this project');
+      s.sourceHeads.push({resourceId:q.resourceId,revisionId:q.revisionId});s.sourceHeads.sort((a,b)=>a.resourceId.localeCompare(b.resourceId));s.generation++;
+      const parent=s.manifests.at(-1);
+      const manifest={schemaVersion:1 as const,organizationId:q.organizationId,projectId:q.projectId,id:`source-init:${q.resourceId}`,author:q.actorId,createdAt:now,sequence:(parent?.sequence??-1)+1,parent:parent?.hash??null,sourceHeads:s.sourceHeads,knowledgeHead:s.knowledgeHead,knowledgeGeneration:s.knowledgeGeneration,envelopeDigest:null,decisionId:null,evidenceIds:[],behavior:'historical-unverified' as const};
+      s.manifests.push({...manifest,hash:computeProjectManifestHash(manifest)});
+      if(!ownership)tx.lockNativeResource(q.resourceId,q.projectId);tx.putNativeProjectJson(q.projectId,q.organizationId,s.generation,canonicalJson(ProjectStateSchema.parse(s)));
+      return toResult(d);
+    }));
+  }
+
+  /** Directory checks occur in trusted Worker code; CAS fences any concurrent revocation. */
+  async reconcileNativeAuthority(organizationId:string,projectId:string,actorId:string,principalId:string,role:'owner'|'developer',expectedGeneration:number,idempotencyKey:string):Promise<string> {
+    z.enum(['owner','developer']).parse(role);z.string().min(1).max(256).parse(idempotencyKey);
+    return this.#rpc(()=>this.#recordTx(organizationId,tx=>{
+      const stored=tx.getNativeProjectJson(projectId);if(!stored)throw new ProjectError('project_not_found','project is not enabled');
+      const s=ProjectStateSchema.parse(JSON.parse(stored));
+      const requestDigest=hashCanonicalSync({domain:'cf.native-authority-reconcile/1',actorId,principalId,role,expectedGeneration});
+      const replay=s.idempotency.find(r=>r.key===idempotencyKey);
+      if(replay){if(replay.requestDigest!==requestDigest)throw new ProjectError('revision_conflict','idempotency key belongs to another request');return canonicalJson(s);}
+      if(tx.nativeAuthorityTransitionPending(principalId)||tx.nativeAuthorityTransitionPending(actorId))throw new ProjectError('revision_conflict','directory authority update is still pending');
+      if(s.generation!==expectedGeneration)throw new ProjectError('revision_conflict','authority or project changed; retry directory reconciliation');
+      if(!s.authorities.some(a=>a.principalId===actorId&&a.active&&a.role==='owner'))throw new ProjectError('authority_denied','active project owner required');
+      const previous=s.authorities.find(a=>a.principalId===principalId);
+      if(previous){if(!previous.active||previous.role!==role){previous.active=true;previous.role=role;previous.revision++;}}else s.authorities.push({principalId,role,revision:1,active:true});
+      s.generation++;s.idempotency.push({key:idempotencyKey,requestDigest,resultGeneration:s.generation,resultId:principalId});
+      tx.putNativeProjectJson(projectId,organizationId,s.generation,canonicalJson(ProjectStateSchema.parse(s)));return canonicalJson(s);
     }));
   }
 
@@ -292,17 +363,27 @@ export class OrgLedger extends DurableObject<Env> {
   }
 
   /** Revoke effective native authority BEFORE a D1 membership/grant change reports success. */
-  async revokeNativeAuthority(organizationId:string, principalId:string):Promise<void> {
+  async revokeNativeAuthority(organizationId:string, principalId:string):Promise<string> {
     return this.#rpc(() => this.#recordTx(organizationId,tx => {
+      const token=crypto.randomUUID();tx.beginNativeAuthorityTransition(token,principalId);
       for (const value of tx.listNativeProjectJson()) {
         const s = ProjectStateSchema.parse(JSON.parse(value));
         const a = s.authorities.find(a => a.principalId === principalId);
-        if (!a) continue;
-        a.active=false; a.revision++; s.generation++;
+        // Fence reconciliation even when the principal has never been enrolled.
+        if(a){a.active=false; a.revision++;} s.generation++;
         const latest = new Map(s.mandates.map(m => [m.id,m]));
         for (const m of latest.values()) if (m.issuer === principalId && !m.revokedAt) s.mandates.push({...m,revision:m.revision+1,createdAt:this.#now(),revokedAt:this.#now(),revocationGeneration:m.revocationGeneration+1});
         tx.putNativeProjectJson(s.projectId,organizationId,s.generation,canonicalJson(s));
       }
+      return token;
+    }));
+  }
+
+  /** Complete only after directory writes and lease narrowing succeed. Failures stay denied. */
+  async finishNativeAuthorityRevocation(organizationId:string,token:string):Promise<void> {
+    return this.#rpc(()=>this.#recordTx(organizationId,tx=>{
+      tx.finishNativeAuthorityTransition(token);
+      for(const value of tx.listNativeProjectJson()) {const s=ProjectStateSchema.parse(JSON.parse(value));s.generation++;tx.putNativeProjectJson(s.projectId,organizationId,s.generation,canonicalJson(s));}
     }));
   }
 

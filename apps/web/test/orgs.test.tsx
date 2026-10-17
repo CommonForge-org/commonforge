@@ -91,6 +91,8 @@ describe("org home", () => {
     const withForm = renderToString(createElement(OrgHomeView, { membership: A, projects: [], newProject: { busy: false, error: null, onCreate: () => {}, startOpen: true } }));
     expect(withForm).toContain("New project");
     expect(withForm).toContain("Project name");
+    expect(withForm).toContain('value="agent-native" selected=""');
+    expect(withForm).toContain('Legacy agency and staging');
     expect(renderToString(createElement(OrgHomeView, { membership: A, projects: [] }))).not.toContain("Project name");
   });
 

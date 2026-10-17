@@ -34,12 +34,13 @@ import { verifiedObjectBody } from "../services/lfs-hash.js";
 
 export const projectRoutes = new Hono<AppEnv>();
 
-// G1 freezes source membership at enablement; mutable legacy folder/policy workflows
-// cannot detach source from an accepted manifest or activate shared staging.
+// Native projects allow dedicated new-folder genesis; existing source membership cannot
+// be edited through legacy mount routes or detached from the accepted manifest.
 projectRoutes.use('/orgs/:org/projects/:pid/*', async (c,next) => {
   if (c.req.method === 'GET') return next();
   const path=new URL(c.req.url).pathname;
   if (!/\/(folders|mounts)(\/|$)/.test(path)) return next();
+  if (c.req.method === 'POST' && /\/folders(?:\/[^/]+\/setup\/retry)?$/.test(path)) return next();
   const actor=await orgActor(c,c.req.param('org')!,['owner','developer']);
   if (await c.get('svc').ledger(actor.orgId).getNativeProject(c.req.param('pid')!)) throw conflict('project_mode_unsupported','source membership is fixed for this agent-native project');
   return next();
@@ -47,10 +48,14 @@ projectRoutes.use('/orgs/:org/projects/:pid/*', async (c,next) => {
 
 projectRoutes.post("/orgs/:org/projects", async (c) => {
   const actor = await orgActor(c, c.req.param("org"), ["owner", "developer"]);
-  const body = await readJson(c, z.object({ name: z.string().trim().min(1).max(128) }));
+  const body = await readJson(c, z.object({ name: z.string().trim().min(1).max(128), mode: z.enum(["legacy", "agent-native"]).default("legacy") }));
   const svc = c.get("svc");
   const projectId = newId("p", 6);
   const now = svc.nowIso();
+  if (body.mode === "agent-native") {
+    const members = await svc.db.prepare("SELECT user_id,role FROM memberships WHERE org_id=? AND (role='owner' OR user_id=?)").bind(actor.orgId, actor.userId).all<{user_id:string;role:'owner'|'developer'}>();
+    await svc.ledger(actor.orgId).enableNativeProject({ organizationId: actor.orgId, projectId, actorId: actor.userId, policyRevision: 0, sourceHeads: [], creation: true, authorities: members.results.map(m => ({ principalId:m.user_id, role:m.role, revision:1, active:true })) });
+  }
   await svc.db.prepare("INSERT INTO projects (org_id, project_id, name, created_by, created_at) VALUES (?, ?, ?, ?, ?)").bind(actor.orgId, projectId, body.name, actor.userId, now).run();
   if (actor.role !== "owner") await putGrant(svc.db, { orgId: actor.orgId, userId: actor.userId, scopeKind: "project", scopeId: projectId, operations: ["read", "write"], grantedBy: actor.userId, now });
   await recordEvent(svc, { orgId: actor.orgId, projectId, actor: userRef(actor.userId), action: "project.created", subjectKind: "project", subjectId: projectId, clientVisible: true });
@@ -76,16 +81,18 @@ projectRoutes.get("/orgs/:org/projects/:pid", async (c) => {
   const actor = await orgActor(c, c.req.param("org"));
   const svc = c.get("svc");
   const project = await readableProject(svc, actor, c.req.param("pid"));
+  const native = !!await svc.ledger(actor.orgId).getNativeProject(project.project_id);
   const mounts = [];
   for (const m of await listMounts(svc.db, actor.orgId, project.project_id)) {
     // AT-16 / FR-14: a mount whose resource the caller cannot read is not even named
     if (!(await canReadResource(svc, actor, m.resource_id))) continue;
     const r = await getResource(svc.db, actor.orgId, m.resource_id);
     // whether the Files tab offers write actions (plan folders phase 3); the write routes still check for themselves
-    const canWrite = isDeveloper(actor.role) && (await canWriteResource(svc, actor, m.resource_id));
+    const canRetrySetup = isDeveloper(actor.role) && (await canWriteResource(svc, actor, m.resource_id));
+    const canWrite = !native && canRetrySetup;
     // whether the caller may start a task writing to this folder (the New task form): createTask's own rule
     const canStartTask = !!r && (await writeMountIssue(svc, actor, project, m, r)) === null;
-    mounts.push({ mountName: m.mount_name, resourceId: m.resource_id, provider: r?.provider, resourceName: r?.name, mode: m.mode, operations: mountOperations(m), canWrite, canStartTask });
+    mounts.push({ mountName: m.mount_name, resourceId: m.resource_id, provider: r?.provider, resourceName: r?.name, mode: m.mode, operations: mountOperations(m), canWrite, canRetrySetup, canStartTask });
   }
   const last = isDeveloper(actor.role)
     ? await svc.db
@@ -95,6 +102,7 @@ projectRoutes.get("/orgs/:org/projects/:pid", async (c) => {
     : null;
   return c.json({
     projectId: project.project_id,
+    mode: native ? "agent-native" : "legacy",
     name: project.name,
     membershipRevision: project.membership_revision,
     policyRevision: project.policy_revision,
@@ -146,6 +154,8 @@ projectRoutes.post("/orgs/:org/projects/:pid/folders", async (c) => {
   const project = await readableProject(svc, actor, c.req.param("pid"));
   if (await getMount(svc.db, actor.orgId, project.project_id, body.name)) throw conflict("mount_exists", `this project already has a folder named ${body.name}`);
   const r = await createResource(svc, actor, { name: body.name, provider: "artifacts" }, userRef(actor.userId));
+  if (await svc.ledger(actor.orgId).getNativeProject(project.project_id)) await svc.ledger(actor.orgId).reserveNativeSource(actor.orgId, project.project_id, actor.userId, r.resource_id);
+  await svc.ledger(actor.orgId).reserveResourceMount(actor.orgId, project.project_id, r.resource_id);
   await recordEvent(svc, { orgId: actor.orgId, actor: userRef(actor.userId), action: "resource.created", subjectKind: "resource", subjectId: r.resource_id, resourceIds: [r.resource_id], detail: { provider: r.provider, name: r.name } });
   const ins = await svc.db
     .prepare("INSERT OR IGNORE INTO mounts (org_id, project_id, mount_name, resource_id, mode, operations_json, created_at) VALUES (?, ?, ?, ?, 'must-match-accepted', '[\"read\",\"write\"]', ?)")
@@ -257,6 +267,7 @@ projectRoutes.post("/orgs/:org/projects/:pid/mounts", async (c) => {
   const project = await readableProject(svc, actor, c.req.param("pid"));
   const resource = await getResource(svc.db, actor.orgId, body.resourceId);
   if (!resource || !(await canReadResource(svc, actor, body.resourceId))) throw notFound("resource not found");
+  await svc.ledger(actor.orgId).reserveResourceMount(actor.orgId, project.project_id, body.resourceId);
   const ops = [...new Set([...body.operations, "read" as const])].sort();
   if (ops.includes("write") && !(await canWriteResource(svc, actor, body.resourceId))) throw forbidden("no_write_grant", "mounting for write needs a write grant on the resource");
   const now = svc.nowIso();

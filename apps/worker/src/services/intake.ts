@@ -143,6 +143,7 @@ export async function runUrlImport(svc: Services, orgId: string, intakeId: strin
   await updateResource(svc.db, orgId, req.resourceId, { state: "active", error: null, source_json: JSON.stringify({ kind: "url", url: req.url, branch: req.branch, ...(req.depth ? { depth: req.depth, historyTruncated: true } : {}) }) }, now);
   let mounted = false;
   if (req.projectId && req.mountName && (await getProject(svc.db, orgId, req.projectId))) {
+    await svc.ledger(orgId).reserveResourceMount(orgId,req.projectId,req.resourceId);
     const ins = await svc.db
       .prepare("INSERT OR IGNORE INTO mounts (org_id, project_id, mount_name, resource_id, mode, operations_json, created_at) VALUES (?, ?, ?, ?, 'must-match-accepted', '[\"read\",\"write\"]', ?)")
       .bind(orgId, req.projectId, req.mountName, req.resourceId, now)

@@ -538,5 +538,25 @@
       "releaseClaimed": false
     },
     "verifierDefinition": "cf.scheduling-verifier/2 binds supervisor logic, host, examples; runtime pins Node version and architecture"
+  },
+  "continuation": {
+    "recordedAt": "2026-10-17",
+    "implementationRevision": "continuation worktree; revision in execution-status.md",
+    "realNativeOnboarding": {
+      "command": "PORT=8939 PREVIEW_PORT=8940 pnpm test:g1:local",
+      "browserTestsPassed": 3,
+      "actualGitGenesis": true,
+      "screenshot": "../images/native-onboarding.png"
+    },
+    "cloudflareRuntime": {
+      "engine": "actual pinned workerd",
+      "signedGitBuildBridge": "pass",
+      "cloudDeployment": "not_run",
+      "productionRebuildByteEquivalence": "not_claimed",
+      "boundedShape": "one bundled vars-only Worker; no external bindings/migrations/assets"
+    },
+    "authorityAndGenesis": "actual SQLite race and fault regressions passed",
+    "liveGate": "pending authorized isolated target",
+    "fullG1": "not_achieved"
   }
 }

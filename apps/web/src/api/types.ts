@@ -104,6 +104,8 @@ export interface Mount {
   operations: Operation[];
   /** the viewer may upload and change files here (owners; developers with write); absent from older servers: false */
   canWrite?: boolean;
+  /** New dedicated source setup may be retried even when direct legacy edits are unavailable. */
+  canRetrySetup?: boolean;
   /**
    * the viewer may start a task that writes here (the New task form; Worker `writeMountIssue`):
    * owners and developers with write on a folder opened for writing, clients in a staging-mode
@@ -113,6 +115,7 @@ export interface Mount {
 }
 
 export interface Project {
+  mode?: "legacy" | "agent-native";
   projectId: string;
   name: string;
   membershipRevision: number;

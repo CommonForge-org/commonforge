@@ -38,11 +38,12 @@ export function HomeRedirect() {
   return target ? <Loading what="Opening your organization" /> : <NoOrgsView canCreateOrgs={me?.canCreateOrgs ?? false} />;
 }
 
-type NewProjectProps = { busy: boolean; error: unknown; onCreate: (name: string) => void; onCancel?: () => void; startOpen?: boolean };
+type NewProjectProps = { busy: boolean; error: unknown; onCreate: (name: string, mode: "legacy" | "agent-native") => void; onCancel?: () => void; startOpen?: boolean };
 
 function NewProjectForm({ busy, error, onCreate, onCancel, startOpen = false }: NewProjectProps) {
   const [open, setOpen] = useState(startOpen);
   const [name, setName] = useState("");
+  const [mode, setMode] = useState<"legacy" | "agent-native">("agent-native");
   if (!open)
     return (
       <button type="button" className="btn btn-primary btn-small" onClick={() => setOpen(true)}>
@@ -55,12 +56,19 @@ function NewProjectForm({ busy, error, onCreate, onCancel, startOpen = false }: 
       aria-label="New project"
       onSubmit={(e) => {
         e.preventDefault();
-        if (name.trim()) onCreate(name.trim());
+        if (name.trim()) onCreate(name.trim(), mode);
       }}
     >
       <label className="field">
         Project name
         <input type="text" required maxLength={128} autoFocus value={name} onChange={(e) => setName(e.target.value)} />
+      </label>
+      <label className="field">
+        Project workflow
+        <select value={mode} disabled={busy} onChange={(e) => setMode(e.target.value as "legacy" | "agent-native")}>
+          <option value="agent-native">Project knowledge and verified changes</option>
+          <option value="legacy">Legacy agency and staging</option>
+        </select>
       </label>
       <button type="submit" className="btn btn-primary" disabled={busy || !name.trim()}>
         Create project
@@ -72,6 +80,7 @@ function NewProjectForm({ busy, error, onCreate, onCancel, startOpen = false }: 
         onClick={() => {
           // a later New project starts empty, without the last attempt's error
           setName("");
+          setMode("agent-native");
           setOpen(false);
           onCancel?.();
         }}
@@ -137,15 +146,15 @@ export function OrgHome({ org, role, onSignOut }: { org: string; role: Role; onS
   const membership = memberships.find((m) => m.orgId === org) ?? { orgId: org, name: org, role };
   const label = orgLabels(memberships).get(org) ?? membership.name;
   const load = useLoad(() => api.listProjects(org), org);
-  const act = useAction(async (name: string) => {
-    const p = await api.createProject(org, name);
+  const act = useAction(async (name: string, mode: "legacy" | "agent-native") => {
+    const p = await api.createProject(org, name, mode);
     navigate(settingsHref(org, p.projectId, "folders"));
   });
 
   let content;
   if (load.error) content = <ErrorNote error={load.error} onRetry={load.reload} />;
   else if (!load.data) content = <Loading what="Loading projects" />;
-  else content = <OrgHomeView membership={membership} projects={load.data} label={label} {...(isDeveloperRole(role) ? { newProject: { busy: act.busy, error: act.error, onCreate: (n: string) => void act.run(n), onCancel: act.clearError } } : {})} />;
+  else content = <OrgHomeView membership={membership} projects={load.data} label={label} {...(isDeveloperRole(role) ? { newProject: { busy: act.busy, error: act.error, onCreate: (n: string, mode: "legacy" | "agent-native") => void act.run(n, mode), onCancel: act.clearError } } : {})} />;
   return (
     <OrgFrame org={org} role={role} active="projects" {...(onSignOut ? { onSignOut } : {})}>
       {content}

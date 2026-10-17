@@ -3,8 +3,9 @@
 Updated: 2026-10-17. Goal: durable project understanding across agent handoffs (M0–M5 only).
 
 **Current result:** the real-local implementation and actual fresh-agent continuity are validated.
-Full G1 is **not achieved**: the matching Cloudflare deployment-runtime verifier and authorized
-isolated live release/observation/recovery rehearsal remain outstanding. No production change,
+Full G1 is **not achieved**: a bounded matching Cloudflare/workerd verifier now passes local execution,
+but authorized isolated live release/observation/recovery and the remaining workflow gaps below
+remain outstanding. No production change,
 private repository access, visibility/license change, package publication or infrastructure purchase
 was performed. See the final gate record below; earlier entries are chronological checkpoints.
 
@@ -28,8 +29,8 @@ was performed. See the final gate record below; earlier entries are chronologica
 | W04 mandates / context | locally verified, bounded | one-hour scoped handoff, pinned context, CLI/MCP; limitations below |
 | W05 trusted scenario evidence | locally verified | fixed synthetic verifier, signed complete set, retry history |
 | W06 real local workflow | locally verified | actual Git smart HTTP, Worker, runner, R2 and static/API previews |
-| W07 reference UI | locally verified | real owner browser correction, preview, review and acceptance; explicit enablement |
-| W08 release / recovery | partial | bindings/refusals/freshness verified; production runtime/live gate outstanding |
+| W07 reference UI | locally verified | default native onboarding, fresh folder genesis, real owner correction/preview/review/acceptance |
+| W08 release / recovery | partial | bounded workerd adapter and signed exact-Git bridge verified locally; live gate and concrete recovery workflow audit outstanding |
 | W09 portability / agency contract | locally verified, bounded | history/evidence payloads without trust; Git restoration not implemented |
 | W10 integrated review / rehearsal | local gates verified | actual fresh-agent/self-development evidence; full release gate not achieved |
 
@@ -139,7 +140,7 @@ release invariant is distinct from a successful live release (AN-21).
 | AN-18 | pass | legacy core vectors, ledger/Worker migration and full existing suites; shipped SQLite migrations 1–3 unchanged, native migration 4 appended; D1 0019 appended |
 | AN-19 | pass | actual credentialed smart HTTP clone/push/revoke, Node runner, R2, static and isolated API preview; `test:g1:local` and retained real reports |
 | AN-20 | pass | actual fork-none Codex implementation, exact context/input hashes, real verification and accepted manifest described above |
-| AN-21 | not_run | no matching production runtime verifier/authorized isolated Cloudflare release, observation and recovery run; this blocks full G1 achievement |
+| AN-21 | not_run | bounded workerd verifier now locally verified; authorized isolated Cloudflare release, observation and recovery run not performed; this blocks full G1 achievement |
 | AN-22 | pass | public build + synthetic agency consumer contract tests; no private package/config/repository dependency |
 | AN-23 | pass | actual candidate mount/PID/network namespace tests deny controlling secret/network; own-development source snapshot and candidate run separately; external same-OS-account agent is not a multi-tenant sandbox |
 | AN-24 | pass (conservative policy) | real R2 + authoritative payload registry race/fault tests, all-history retention, permanent tombstone before delete, missing/corrupt bytes detected; automatic orphan expiry not implemented |
@@ -195,3 +196,69 @@ baseline. The final packaged rehearsal always starts fresh with the complete sch
 files remain task-private; sanitized summaries and screenshots are committed.
 
 Implementation and sanitized evidence were committed locally as `654644f`; the follow-up status commit records that revision. No push or publication was performed. The working tree was clean after the status commit. The G1 goal remains open because AN-21 and the stated implementation limitations remain.
+
+
+## Continuation: remaining local G1 work (2026-10-17)
+
+The preceding goal turn made progress (committed implementation/evidence), not a verified wait.
+The continuation inspected current sources and addressed additional independent implementation gaps:
+
+- New web onboarding defaults to native genesis, with explicit legacy agency/staging selection.
+  No-mode API clients retain v1 legacy behavior. Owner/developer creation works. New dedicated Git
+  folders reserve permanent exclusive ownership, execute actual zero-parent Git initialization and
+  atomically bind artifact head + unverified manifest. Legacy existing-source attach/detach/import
+  remains refused. All mount insertion paths now serialize with native enablement via ledger
+  reservations. Historical/failed reservations are conservatively retained, so conversion can require
+  fresh sources/project. Actual SQLite trigger fault proves genesis all-or-nothing and exact retry.
+- Added explicit owner authority reconciliation with current directory/full source access checks,
+  client CAS, durable idempotency and incremented authority revision. Prior decisions/mandates are
+  not restored. Durable directory-transition barriers fence enrollment and restoration during
+  membership/grant narrowing, including projects created concurrently. Partial-failure barriers remain
+  closed; ordinary retries cannot clear an earlier failed barrier. Operator recovery must quiesce
+  mutations and verify directory/lease completion before trusted barrier completion. This is an
+  explicit remaining recovery limitation, not an automatic repair claim.
+- Added real pinned workerd verification of actual namespace-built scheduling source output.
+  Recipe/environment uses the same runtime hash domain as native release binding. Signed bridge
+  tests use real Git immutable revisions, actual isolated build, actual workerd HTTP nine scenarios,
+  signed complete evidence, replay and wrong-runtime/cross-project refusal. The executable
+  `g1-cloudflare-server.ts` reads only operator-registered Artifacts repos/revisions and serves the
+  bridge behind operator-managed TLS. HTTPS transport is fixed configuration, rejects redirects and
+  incompatible protocol. Local Node fixture mode remains separate. Remote Artifacts source access
+  in the new server is tested with a transport double, not claimed as live.
+- Workerd support is intentionally bounded to one bundled vars-only Worker; external bindings,
+  migrations, assets and extra modules fail closed. Tested build bytes are exact, but a later
+  production release rebuild still has its separately approved outputDigest. No production-byte
+  equivalence or successful cloud deployment is inferred from the local adapter tests.
+- Independent review identified that the existing pure historical-head recovery checks do not yet
+  prove a usable end-to-end recovery proposal path. A dedicated implementation audit is underway;
+  AN-16 remains a local invariant test, not a successful recovery workflow claim.
+
+Continuation validation:
+
+| Command | Result |
+|---|---|
+| `pnpm typecheck` / `pnpm build` | pass, 21/13 tasks; `.g1-artifacts/continuation-{typecheck,build}.log` |
+| `pnpm exec turbo run test --concurrency=1` | pass, 21 tasks, 2,992 tests +5 existing skips; Worker956, web660, runner170; `.g1-artifacts/continuation-all-test.log` |
+| `pnpm test:security` | pass, 382 tests +1 existing skip; `.g1-artifacts/continuation-security.log` |
+| `pnpm test:fault` | pass, 19 tests including actual native genesis rollback; `.g1-artifacts/continuation-fault.log` |
+| New workerd verifier/source/signed bridge tests | 8 actual local tests passed, included in full runner run |
+| Registered Artifacts source server + signed bridge tests | 3 passed; REST source reads use a double, bridge execution real; `.g1-artifacts/cloudflare-server-tests.log` |
+| HTTPS transport security tests | 2 passed; redirect/protocol replies mocked; `.g1-artifacts/native-verifier-transport.log` |
+| `PORT=8939 PREVIEW_PORT=8940 pnpm test:g1:local` | pass, real source/runner/preview plus all3 browser journeys including native creation/folder setup; `.g1-artifacts/native-onboarding-real-local.log` |
+| Four affected legacy fixture browser stories | pass; fake backing explicitly; `.g1-artifacts/native-onboarding-fixture-browser.log` |
+
+The first continuation transport test assertions incorrectly matched error message against code;
+they were corrected to inspect structured code, then passed. The first packaged rehearsal exposed
+workerd's unsupported `redirect:'error'` Fetch option; transport now uses `manual` and rejects non-2xx,
+then all three actual journeys passed. Failed attempts are not counted as passes. The new
+[onboarding screenshot](images/native-onboarding.png) was inspected by implementer and lead.
+
+Cloud credentials and a dedicated allowed target were not present in the shell. A user question
+requests the existing isolated test configuration/allowed scope or confirmation to keep cloud pending.
+No secrets were printed, no private repository accessed, no deployment/provisioning/purchase performed.
+The isolated target must not be the running control instance. See updated
+[release-rehearsal.md](release-rehearsal.md) for executable runtime prerequisites.
+
+**Next action:** complete the concrete native recovery audit/workflow; finish any independent local
+G1 requirements. Run AN-21 only after an authorized isolated target/runner is available. The G1 goal
+remains active, with no work beyond M5. This continuation does not mark G1 complete.

@@ -124,3 +124,33 @@ test('owner reviews real runner evidence and accepts the exact source proposal',
   writeFileSync(info.outputPath('source-acceptance.json'), JSON.stringify({ execution:'real-browser-real-worker-real-git-real-runner', organizationId:report.organizationId, projectId:report.projectId, proposalId:report.proposalId, envelopeDigest:report.envelopeDigest, scenarioCount:report.scenarioCount, acceptedInBrowser:!alreadyAccepted, inspectedExistingAcceptance:alreadyAccepted,releaseClaimed:false },null,2));
   await info.attach('real-source-acceptance', { contentType: 'application/json', body: JSON.stringify({ execution: 'real-browser-real-worker-real-git-real-runner', ...report, acceptedInBrowser: !alreadyAccepted, inspectedExistingAcceptance: alreadyAccepted, releaseClaimed: false }) });
 });
+
+test('new project onboarding defaults to native knowledge and initializes a dedicated source folder', async ({ page }, info) => {
+  await signedIn(page);
+  const organization = await api(page, '/orgs', { name:'Native onboarding reference' });
+  await page.goto(`/o/${organization.orgId}`);
+  await page.getByRole('button', {name:'New project',exact:true}).click();
+  await expect(page.getByLabel('Project workflow')).toHaveValue('agent-native');
+  await page.getByLabel('Project name').fill('Public reference');
+  await page.getByRole('button', {name:'Create project',exact:true}).click();
+  await expect(page.getByRole('region', {name:'Folders'})).toBeVisible();
+  await expect(page.getByRole('form', {name:'Attach an existing folder'})).toHaveCount(0);
+  const projectId = /\/p\/([^/]+)/.exec(new URL(page.url()).pathname)![1]!;
+  const folder = page.getByRole('form', {name:'New folder'});
+  await folder.getByLabel('New folder', {exact:true}).fill('source');
+  await folder.getByRole('button', {name:'Add folder',exact:true}).click();
+  await expect(page.locator('.folder-row', {hasText:'source'})).toContainText('Ready', {timeout:60_000});
+  await expect(page.getByRole('button', {name:'Detach source',exact:true})).toHaveCount(0);
+  await page.getByRole('navigation', {name:'Project sections'}).getByRole('link', {name:'Knowledge',exact:true}).click();
+  await expect(page.getByRole('heading', {name:'Knowledge',exact:true,level:2})).toBeVisible();
+  await expect(page.getByRole('button', {name:'Enable project understanding'})).toHaveCount(0);
+  const state = await page.evaluate(async ({org,pid}) => {
+    const response=await fetch(`/api/orgs/${org}/projects/${pid}/native`,{credentials:'same-origin'});
+    if(!response.ok) throw new Error('native onboarding state unavailable');
+    return (await response.json()).state;
+  },{org:organization.orgId,pid:projectId});
+  expect(state.sourceHeads).toHaveLength(1);
+  expect(state.manifests.at(-1).sourceHeads).toEqual(state.sourceHeads);
+  expect(state.manifests.at(-1).behavior).toBe('historical-unverified');
+  await page.screenshot({path:info.outputPath('native-onboarding.png'),fullPage:true});
+});

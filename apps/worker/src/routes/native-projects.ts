@@ -13,7 +13,7 @@ import { getTask, listWorkspaces, revokeWorkspaceWriteTokens } from '../services
 import { leaseTokenHash } from '../services/auth.js';
 import { acceptInputFor, afterProposalAccepted, currentApprovals } from '../services/proposals.js';
 import { userRef } from '../services/events.js';
-import { isLocalUrl } from '../lib/local-host.js';
+import { nativeVerifierUrl, nativeVerifierCapabilities } from '../services/native-verifier.js';
 import { exportNativePayloads } from '../services/native-payloads.js';
 
 export const nativeProjectRoutes = new Hono<AppEnv>();
@@ -62,6 +62,19 @@ nativeProjectRoutes.post(`${root}/enable`,async c=>{
   const members=await svc.db.prepare("SELECT user_id,role FROM memberships WHERE org_id=? AND role IN ('owner','developer')").bind(actor.orgId).all<{user_id:string;role:'owner'|'developer'}>();
   const state=JSON.parse(await svc.ledger(actor.orgId).enableNativeProject({organizationId:actor.orgId,projectId:pid,actorId:actor.userId,policyRevision:p.policy_revision,sourceHeads,authorities:members.results.map(m=>({principalId:m.user_id,role:m.role,revision:1,active:true}))}));
   return c.json({protocolVersion:1,state},201);
+});
+// Explicit owner enrollment after current directory access is checked. Old decisions and
+// mandates remain revoked; the incremented authority revision cannot validate old approvals.
+nativeProjectRoutes.post(`${root}/authorities/:principal/reconcile`,async c=>{
+  const actor=await orgActor(c,c.req.param('org'),['owner']);const pid=c.req.param('pid');
+  const body=await readJson(c,Idempotent.extend({expectedGeneration:z.number().int().nonnegative()}));const state=await nativeState(c,actor,pid);if(!state)throw notFound();
+  const svc=c.get('svc'),principalId=c.req.param('principal'),role=await getRole(svc.db,actor.orgId,principalId);
+  if(role!=='owner'&&role!=='developer')throw forbidden('authority_denied','member must currently be an owner or developer');
+  const target={...actor,userId:principalId,role};
+  await readableProject(svc,target,pid);
+  for(const m of await listMounts(svc.db,actor.orgId,pid))if(!await canReadResource(svc,target,m.resource_id)||!await canWriteResource(svc,target,m.resource_id))throw forbidden('authority_denied','member must have complete project source access');
+  const result=await svc.ledger(actor.orgId).reconcileNativeAuthority(actor.orgId,pid,actor.userId,principalId,role,body.expectedGeneration,body.idempotencyKey);
+  return c.json({state:JSON.parse(result)});
 });
 nativeProjectRoutes.post(`${root}/commands`,async c=>{
   const actor=await orgActor(c,c.req.param('org'),['owner','developer']);const pid=c.req.param('pid');
@@ -142,8 +155,7 @@ nativeProjectRoutes.post('/tasks/:id/native/proposals',async c=>{
   const prepared=await acceptInputFor(svc,inner,`prepare-native:${body.idempotencyKey}`,userRef(principal.holderUserId));
   if(!prepared.evidence.length)throw conflict('scenario_evidence_missing','integrate the artifact proposal before freezing project review');
   const sourceHeads=state.sourceHeads.map(h=>({resourceId:h.resourceId,revisionId:prepared.newHeads.find(n=>n.resourceId===h.resourceId)?.revisionId??h.revisionId}));
-  const url=svc.env.COMMONFORGE_LOCAL_RUNNER_URL;if(!url||!isLocalUrl(url)||!isLocalUrl(svc.env.COMMONFORGE_PUBLIC_URL))throw new ApiError(503,'verification_unavailable','configure a trusted runtime verifier before preparing source review');
-  const capabilities=await (await fetch(`${url.replace(/\/$/,'')}/capabilities`,{signal:AbortSignal.timeout(10000)})).json() as {runtimeRecipeDigest:string};
+  const capabilities=await nativeVerifierCapabilities(svc);
   const envelope:ProjectProposalEnvelope={domain:'cf.project-proposal/1',schemaVersion:1,organizationId:task.org_id,projectId:task.project_id,outcome:body.outcome,attemptId:attempt.id,mandateId:attempt.mandateId,mandateRevision:attempt.mandateRevision,contextDigest:attempt.contextDigest,innerProposalId:inner.proposalId,innerProposalHash:inner.proposalHash,sourceHeads,runtimeRecipeDigest:capabilities.runtimeRecipeDigest,buildDigest:scenarioBuildDigest(sourceHeads),expectedParent:state.manifests.at(-1)?.hash??null,expectedKnowledgeHead:state.knowledgeHead,policyRevision:state.policyRevision,proposedKnowledge:[],proposedScenarios:[],requiredScenarios:currentConfirmed(state.scenarios).filter(s=>s.required).map(s=>({id:s.id,revision:s.revision,verifierDigest:s.verifierDigest,method:s.method})),recovery:null,effects:[]};
   const proposalId=`project:${inner.proposalId}:${principal.native.attemptId}`;
   const existing=state.proposals.find(p=>p.id===proposalId);
@@ -154,13 +166,12 @@ nativeProjectRoutes.post('/tasks/:id/native/proposals',async c=>{
 nativeProjectRoutes.post(`${root}/proposals/:proposal/verify`,async c=>{
   const actor=await orgActor(c,c.req.param('org'),['owner','developer']);const pid=c.req.param('pid'),svc=c.get('svc');const s=await nativeState(c,actor,pid);if(!s)throw notFound();
   const body=await readJson(c,Idempotent);const p=s.proposals.find(p=>p.id===c.req.param('proposal'));if(!p)throw notFound();
-  const url=svc.env.COMMONFORGE_LOCAL_RUNNER_URL;
-  if(!url || !isLocalUrl(svc.env.COMMONFORGE_PUBLIC_URL) || !isLocalUrl(url))throw new ApiError(503,'verification_unavailable','configure the isolated real-local scenario runner');
+  const url=nativeVerifierUrl(svc);
   const now=svc.nowIso();const proposedRequest:ScenarioVerificationRequest={protocolVersion:1,organizationId:actor.orgId,projectId:pid,runId:newId('run',12),envelopeDigest:p.digest,buildDigest:p.envelope.buildDigest,runtimeRecipeDigest:p.envelope.runtimeRecipeDigest,sourceHeads:p.envelope.sourceHeads,requiredScenarios:p.envelope.requiredScenarios.filter(q=>q.method==='automated'),issuedAt:now,expiresAt:new Date(Date.parse(now)+300000).toISOString()};
   const reserved=JSON.parse(await svc.ledger(actor.orgId).reserveNativeVerification(actor.orgId,pid,actor.userId,body.idempotencyKey,proposedRequest));
   if(reserved.result)return c.json(JSON.parse(reserved.result));
   const request=JSON.parse(reserved.request) as ScenarioVerificationRequest;
-  const response=await fetch(`${url.replace(/\/$/,'')}/verify`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(await signScenarioRequest(request,svc.jobKey())),signal:AbortSignal.timeout(125000)});
+  const response=await fetch(`${url.replace(/\/$/,'')}/verify`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(await signScenarioRequest(request,svc.jobKey())),signal:AbortSignal.timeout(125000),redirect:'manual'});
   if(!response.ok)throw new ApiError(502,'verification_failed','runner refused verification');
   const result=await verifyScenarioResult(await response.json(),svc.jobKey(),request);
   return c.json(JSON.parse(await svc.ledger(actor.orgId).completeNativeVerification(actor.orgId,pid,actor.userId,body.idempotencyKey,result)));

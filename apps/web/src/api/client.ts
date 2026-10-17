@@ -146,7 +146,7 @@ export interface CommonForgeApi {
   inviteMember(org: string, body: { email: string; role: Role }): Promise<InviteResult>;
   getProjectAccess(org: string, pid: string): Promise<PersonAccess[]>;
   putProjectAccess(org: string, pid: string, body: { userId: string; level: AccessLevel; folders?: Record<string, AccessLevel> }): Promise<PersonAccess>;
-  createProject(org: string, name: string): Promise<{ projectId: string; name: string }>;
+  createProject(org: string, name: string, mode?: "legacy" | "agent-native"): Promise<{ projectId: string; name: string }>;
   listResources(org: string): Promise<Resource[]>;
   listFolders(org: string, pid: string): Promise<ProjectFolder[]>;
   /** A new folder (a git folder; there is no kind to choose): `201` before its first version exists, listed as `settingUp` until then. */
@@ -465,8 +465,8 @@ export class HttpApi implements CommonForgeApi {
   putProjectAccess(org: string, pid: string, body: { userId: string; level: AccessLevel; folders?: Record<string, AccessLevel> }) {
     return this.json<PersonAccess>("PUT", `/orgs/${enc(org)}/projects/${enc(pid)}/access`, body);
   }
-  createProject(org: string, name: string) {
-    return this.json<{ projectId: string; name: string }>("POST", `/orgs/${enc(org)}/projects`, { name });
+  createProject(org: string, name: string, mode?: "legacy" | "agent-native") {
+    return this.json<{ projectId: string; name: string }>("POST", `/orgs/${enc(org)}/projects`, { name, ...(mode ? { mode } : {}) });
   }
   async listResources(org: string) {
     return (await this.json<{ resources: Resource[] }>("GET", `/orgs/${enc(org)}/resources`)).resources;

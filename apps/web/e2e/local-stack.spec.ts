@@ -700,6 +700,7 @@ test("Getting started on a fresh organization: Git import, release example, firs
   await expect(gs).toContainText("1 of 6 done");
   await gs.getByRole("button", { name: "New project" }).click();
   await page.getByLabel("Project name").fill("Bakery site");
+  await page.getByLabel("Project workflow").selectOption("legacy");
   await page.getByRole("button", { name: "Create project" }).click();
   await expect(page.getByText("This project has no folders yet.")).toBeVisible();
   const orgId = /\/o\/([^/]+)\/p\//.exec(page.url())![1]!;

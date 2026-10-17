@@ -218,6 +218,10 @@ export const MIGRATIONS: readonly Migration[] = [
       `CREATE TRIGGER native_locks_no_delete BEFORE DELETE ON native_resource_locks BEGIN SELECT RAISE(ABORT, 'native resource ownership is permanent'); END`,
     ],
   },
+  { id: 5, name: 'native-authority-transitions', statements: [
+    `CREATE TABLE native_authority_transitions (token TEXT PRIMARY KEY, principal_id TEXT NOT NULL)`,
+    `CREATE TABLE native_mount_reservations (resource_id TEXT NOT NULL, project_id TEXT NOT NULL, PRIMARY KEY(resource_id,project_id))`,
+  ] },
 ];
 
 /** Tables created by the migrations (tests assert they exist). */
@@ -245,6 +249,8 @@ export const LEDGER_TABLES = [
   'native_jobs',
   'native_archives',
   'native_payloads',
+  'native_authority_transitions',
+  'native_mount_reservations',
 ] as const;
 
 /**

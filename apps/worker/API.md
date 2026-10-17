@@ -1901,7 +1901,7 @@ OrgLedger. D1 indexes do not authorize native acceptance.
 - `POST …/native/proposals {innerProposalId,expectedGeneration,idempotencyKey,outcome?}` freezes the
   outer source envelope after exact integration. All required scenarios come from confirmed state.
 - `POST /api/orgs/:org/projects/:pid/native/proposals/:proposal/verify {idempotencyKey}` calls the
-  configured loopback signed supervisor. Requests/results use explicit protocol 1; unsupported
+  configured signed supervisor (loopback only for a local control plane, or operator-pinned HTTPS). Requests/results use explicit protocol 1; unsupported
   runtime/verifier/set/signature/subject fails closed. Job budgets and result ingestion are durable.
 - `PUT|GET|DELETE …/native/attachments/:sha256`: ≤1 MiB digest-checked project evidence bytes. DELETE
   refuses every referenced historical payload; tombstones serialize against evidence registration.
@@ -1912,7 +1912,8 @@ OrgLedger. D1 indexes do not authorize native acceptance.
 
 Source acceptance invokes existing `planCommit` checks and writes artifact heads plus project manifest
 in the same SQLite transaction. Native source locks also block legacy queue acceptance, restore and
-head adoption. Source membership/staging mutations are unsupported after enablement. Native release
+head adoption. Fresh dedicated folders initialize atomically; existing source attachment/detach and
+staging mutations are unsupported after enablement. Native release
 preparation/publish/deploy require a manifest mapping and matching runtime; legacy-prepared releases
 cannot bypass it. See `docs/agent-native/release-rehearsal.md` for the unverified live gate.
 
@@ -1921,3 +1922,14 @@ Stable refusal codes include `revision_conflict`, `knowledge_stale`, `context_to
 `scenario_evidence_missing`, `scenario_evidence_invalid`, `review_subject_changed`,
 `project_mode_unsupported`, `authority_denied`, `idempotency_conflict`, `unsupported_version`,
 `recovery_unsupported` and `bundle_invalid`. Historical passes are immutable; applicability is computed.
+
+
+Native onboarding: `POST /api/orgs/:org/projects {name,mode:"agent-native"}` creates empty native genesis
+for an owner/developer. Web creation defaults to this mode; omitted API mode remains legacy for v1
+clients. `POST …/folders` reserves a fresh source then initializes its first Git commit and manifest
+atomically. No prior verification is invented. Permanent attachment reservations serialize legacy
+sharing against native ownership; failed/former attachments can conservatively prevent conversion.
+`POST …/native/authorities/:principal/reconcile {expectedGeneration,idempotencyKey}` lets an active
+owner enroll/restore a current owner/developer with complete source access, using CAS/idempotency.
+Authority revision advances; prior decisions/mandates stay invalid. Pending directory changes block
+reconciliation; interrupted barriers require quiescent operator recovery (see local-workflow.md).

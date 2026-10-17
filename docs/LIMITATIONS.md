@@ -418,11 +418,15 @@ hashes, approval policy and migrations remain compatible.
 
 Current native limitations:
 
-- Enablement is explicit after source setup. Source membership is fixed afterward; shared staging,
+- Web onboarding defaults to native mode; older API calls without `mode` stay legacy. Fresh dedicated
+  Git folders can initialize afterward, while existing-source attach/detach/import and shared staging,
   legacy direct accept/restore/adoption and combined source-plus-knowledge acceptance are refused.
 - A replacement handoff supplies new pinned context and revokes the old task mandate. Transparent
   extension of an existing attempt/token is not implemented. New/restored user grants do not refresh
-  native authority automatically; revocation fails closed and must not be treated as a temporary UI flag.
+  native authority automatically. Explicit owner reconciliation checks current access, CAS and
+  idempotency; old decisions/mandates stay revoked. Failed directory transitions leave durable barriers
+  requiring quiescent operator recovery. Permanent attachment reservations can conservatively refuse
+  native enablement after historical/failed attachment; use fresh dedicated sources.
 - The trusted concrete automated verifier covers the synthetic scheduling fixture. Arbitrary candidate
   test scripts cannot replace it. Supported local builds/checks use Linux namespaces and Node entrypoints
   with dependency installation disabled. Local preview APIs support standalone Node-compatible modules,
@@ -430,8 +434,10 @@ Current native limitations:
 - Namespace checks/builds do not mount the controller source/keys or host network. External developer
   agents on the same OS account are outside that process boundary; this is not a multi-tenant host.
 - Native release bindings and five-minute observations are implemented, but the local Node source/runtime
-  verifier cannot authorize a different Cloudflare deployment runtime. Matching production verification
-  and a real authorized isolated Cloudflare release/recovery rehearsal remain outstanding. No native
+  verifier cannot authorize a different Cloudflare deployment runtime. A bounded actual workerd source/build verifier now uses the matching recipe/environment digest
+  and has passed local signed/Git/namespace tests. It supports one bundled vars-only Worker, no
+  external bindings/migrations/assets. Remote infrastructure integration and a real authorized isolated
+  Cloudflare release/recovery rehearsal remain outstanding; production rebuild bytes are separately approved. No native
   production deployment or continuous monitoring is claimed.
 - Bundles preserve historical metadata and available evidence bytes without importing trust. They
   explicitly report missing Git content, are not complete backups, and do not restore Git repositories.

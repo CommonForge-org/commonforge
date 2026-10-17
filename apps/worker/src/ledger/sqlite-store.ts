@@ -172,6 +172,14 @@ export class SqliteLedgerTx implements LedgerTx {
       ON CONFLICT(project_id) DO UPDATE SET generation = excluded.generation, json = excluded.json`, projectId, organizationId, generation, value);
   }
 
+  beginNativeAuthorityTransition(token:string,principalId:string):void {this.sql.exec('INSERT INTO native_authority_transitions (token,principal_id) VALUES (?,?)',token,principalId);}
+  finishNativeAuthorityTransition(token:string):void {this.sql.exec('DELETE FROM native_authority_transitions WHERE token=?',token);}
+  nativeAuthorityTransitionPending(principalId:string):boolean {return this.rows('SELECT token FROM native_authority_transitions WHERE principal_id=? LIMIT 1',principalId).length>0;}
+
+  reserveResourceMount(resourceId:string,projectId:string):void {this.sql.exec('INSERT OR IGNORE INTO native_mount_reservations (resource_id,project_id) VALUES (?,?)',resourceId,projectId);}
+  projectResourceReservations(projectId:string):string[] {return this.rows('SELECT resource_id FROM native_mount_reservations WHERE project_id=?',projectId).map(r=>str(r.resource_id));}
+  hasOtherResourceMount(resourceId:string,projectId:string):boolean {return this.rows('SELECT project_id FROM native_mount_reservations WHERE resource_id=? AND project_id!=? LIMIT 1',resourceId,projectId).length>0;}
+
   nativeResourceProject(resourceId: string): string | null {
     const r = this.rows('SELECT project_id FROM native_resource_locks WHERE resource_id = ?', resourceId)[0];
     return r ? str(r.project_id) : null;

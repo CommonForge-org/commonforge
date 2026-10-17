@@ -72,6 +72,7 @@ export interface FoldersViewProps {
   org: string;
   pid: string;
   viewerRole: Role;
+  native?: boolean;
   folders: ProjectFolder[];
   /** org folders not in this project (owners) */
   attachable: Array<Pick<Resource, "resourceId" | "name" | "provider">>;
@@ -108,14 +109,14 @@ export function FoldersView(p: FoldersViewProps) {
           icon="files"
           title="This project has no folders yet."
           action={
-            p.viewerRole === "owner" ? (
+            p.viewerRole === "owner" && !p.native ? (
               <Link href={intakeHref(p.org, p.pid)} className="btn btn-primary btn-small">
                 Import from Git
               </Link>
             ) : undefined
           }
         >
-          {p.viewerRole === "owner" ? "Import the site's code from a public Git repository (it keeps its history), or add an empty folder below." : "Add an empty folder below; the project owner imports existing code."}
+          {p.native ? "Add a new source folder below. Its first version becomes part of this project’s accepted state." : p.viewerRole === "owner" ? "Import the site's code from a public Git repository (it keeps its history), or add an empty folder below." : "Add an empty folder below; the project owner imports existing code."}
         </EmptyState>
       ) : (
         <ul className="folder-list">
@@ -130,7 +131,7 @@ export function FoldersView(p: FoldersViewProps) {
                 {!f.writable && !owner ? <div className="small muted">Read-only in this project</div> : null}
               </div>
               <div className="folder-row-actions">
-                {owner ? (
+                {owner && !p.native ? (
                   <select className="folder-writable" aria-label={`Changes to ${f.mountName}`} value={f.writable ? "writable" : "read-only"} disabled={p.busy} onChange={(e) => p.onSetWritable?.(f.mountName, e.target.value === "writable")}>
                     <option value="writable">Can be changed</option>
                     <option value="read-only">Read-only</option>
@@ -141,7 +142,7 @@ export function FoldersView(p: FoldersViewProps) {
                     Try again
                   </button>
                 ) : null}
-                {owner ? (
+                {owner && !p.native ? (
                   <button type="button" className="btn btn-quiet btn-small" aria-label={`Detach ${f.mountName}`} disabled={p.busy} onClick={() => p.onAskDetach(f.mountName, f.resourceId)}>
                     Detach
                   </button>
@@ -156,7 +157,7 @@ export function FoldersView(p: FoldersViewProps) {
           {p.notice}
         </p>
       ) : null}
-      {owner && p.folders.length ? (
+      {owner && !p.native && p.folders.length ? (
         <p className="muted small" data-testid="folders-writable-note">
           <strong>Can be changed</strong>: developers with write, and clients you give Can change under Access, may change it through tasks. <strong>Read-only</strong>: agents get it to read, and new tasks cannot change it in this project (a developer's task already checked out keeps its write until it is submitted).
         </p>
@@ -185,6 +186,7 @@ export function FoldersView(p: FoldersViewProps) {
           <ErrorNote error={p.error} />
         </ConfirmSheet>
       ) : null}
+      {p.native ? <p className="small muted">Source folders belong only to this project. Existing folders cannot be attached or detached here. Changes to their contents use verified project proposals.</p> : null}
       <AddFolder key={p.formKey} {...p} />
     </section>
   );
@@ -204,10 +206,12 @@ function AddFolder(p: FoldersViewProps) {
   return (
     <div className="folder-add">
       <h2 className="small">Add a folder</h2>
+      {!p.native ? <>
       <Link href={intakeHref(p.org, p.pid)} className="btn btn-quiet btn-small">
         Import files
       </Link>
       <p className="small muted">Public git URLs only; ZIP plans folders but doesn't fill them yet.</p>
+      </> : null}
       <form
         className="invite-form"
         aria-label="New folder"
@@ -229,7 +233,7 @@ function AddFolder(p: FoldersViewProps) {
           </p>
         ) : null}
       </form>
-      {owner ? (
+      {owner && !p.native ? (
         <form
           className="invite-form"
           aria-label="Attach an existing folder"
@@ -312,6 +316,7 @@ export function FoldersTab() {
       org={org}
       pid={pid}
       viewerRole={role}
+      native={project.mode === "agent-native"}
       folders={folders}
       attachable={resources.filter((r) => !mounted.has(r.resourceId))}
       peopleWithAccess={people.filter((x) => x.role !== "owner" && x.level !== "none").length}
@@ -320,7 +325,7 @@ export function FoldersTab() {
       busy={act.busy}
       error={act.error}
       formKey={formKey}
-      writable={project.mounts.filter((m) => m.canWrite).map((m) => m.mountName)}
+      writable={project.mounts.filter((m) => m.canRetrySetup ?? m.canWrite).map((m) => m.mountName)}
       onRetry={(mountName) => void act.run(() => api.retryFolderSetup(org, pid, mountName))}
       onSetWritable={(mountName, writable) =>
         void act.run(async () => {

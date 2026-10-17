@@ -87,6 +87,14 @@ describe("HttpApi", () => {
     ]);
   });
 
+  it("sends the explicit native onboarding mode without changing older callers", async () => {
+    const { calls, api } = recorder(() => json({projectId:"p-new", name:"Reference"}));
+    await api.createProject("o-1", "Reference", "agent-native");
+    await api.createProject("o-1", "Agency", "legacy");
+    expect(JSON.parse(String(calls[0]!.init?.body))).toEqual({name:"Reference",mode:"agent-native"});
+    expect(JSON.parse(String(calls[1]!.init?.body))).toEqual({name:"Agency",mode:"legacy"});
+  });
+
   it("project and folder admin calls hit the documented routes", async () => {
     const { calls, api } = recorder(() => json({ projectId: "p-9", name: "X", resources: [], folders: [], mountName: "m", resourceId: "r", changed: [] }));
     await api.createProject("o-1", "X");

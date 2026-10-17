@@ -174,6 +174,7 @@ intakeRoutes.post("/orgs/:org/intake/:id/confirm", async (c) => {
     const r = await createResource(svc, actor, { name: p.resourceName, provider: p.provider }, userRef(actor.userId));
     let mountName: string | undefined;
     if (body.projectId) {
+      await svc.ledger(actor.orgId).reserveResourceMount(actor.orgId,body.projectId,r.resource_id);
       const name = mountOf(p) ?? r.resource_id;
       const ins = await svc.db
         .prepare("INSERT OR IGNORE INTO mounts (org_id, project_id, mount_name, resource_id, mode, operations_json, created_at) VALUES (?, ?, ?, ?, 'must-match-accepted', '[\"read\",\"write\"]', ?)")
