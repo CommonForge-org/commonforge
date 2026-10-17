@@ -74,7 +74,7 @@ Complete real Worker accept/correction cycle, payload retention, browser screens
 
 ## Final local verification and empirical evidence
 
-Code revision: implementation commit recorded after staging below. Baseline `d5ab4eb`; isolated
+Code revision: `654644f` (`Implement native project knowledge, scoped agents and verified local workflow`). Baseline `d5ab4eb`; isolated
 self-development snapshot `394958877aca94b522b87dd973b1b9ffb9b5c826` (929 public files at that
 rehearsal point), not a claim that it equals the final implementation commit.
 
@@ -193,3 +193,5 @@ with `G1_STATE_DIR=/tmp/commonforge-g1-real-worker-CSARaE scripts/dev-real-worke
 provisional projects predate the final unshipped migration-4 table set; do not use them as a portability
 baseline. The final packaged rehearsal always starts fresh with the complete schema. Raw keys/session
 files remain task-private; sanitized summaries and screenshots are committed.
+
+Implementation and sanitized evidence were committed locally as `654644f`; the follow-up status commit records that revision. No push or publication was performed. The working tree was clean after the status commit. The G1 goal remains open because AN-21 and the stated implementation limitations remain.

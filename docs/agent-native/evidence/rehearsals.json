@@ -3,7 +3,7 @@
   "recordedAt": "2026-10-17",
   "execution": "real-local Worker, Git smart HTTP, signed Node runner, namespace-isolated HTTP harness",
   "baselineCommit": "d5ab4eb",
-  "implementationRevision": "working tree; final commit recorded in execution-status.md",
+  "implementationRevision": "654644f",
   "syntheticScheduling": {
     "organizationId": "o-0e7cde9b1e3e",
     "projectId": "p-d62089b4b665",
